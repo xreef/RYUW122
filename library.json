@@ -1,0 +1,24 @@
+{
+  "name": "RYUW122",
+  "version": "1.0.0",
+  "keywords": "uwb, ranging, communication, reyax, ryuw122, location, wireless",
+  "description": "Arduino library for the Reyax RYUW122 UWB module. This library allows you to control the RYUW122 module for ranging (distance measurement) and data transmission. It supports both Anchor and Tag modes and communicates with the module using AT commands over a serial connection.",
+  "homepage": "",
+  "authors":
+  [
+    {
+      "name": "Renzo Mischianti",
+      "email": "renzo.mischianti@gmail.com",
+      "maintainer": true,
+      "url": "https://www.mischianti.org"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "headers": ["RYUW122.h", "includes/RYUW122_enums.h"]
+}
