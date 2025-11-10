@@ -9,16 +9,20 @@
 
 #include <RYUW122.h>
 
+#define RESET_PIN 6 // NRST active LOW
+
+// Create UWB instance
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200);
+
 // ========================================
 // SYSTEM CONFIGURATION
 // ========================================
 
 // UWB module connection
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200);
+//RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200);
 
 // Network settings
 const char* NETWORK_ID = "REYAX123";
 const char* COORDINATOR_ADDR = "COORD001";
 
 // ...existing code...
-

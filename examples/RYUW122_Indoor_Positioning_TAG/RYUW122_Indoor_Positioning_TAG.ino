@@ -15,7 +15,10 @@
 
 #include <RYUW122.h>
 
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200);
+#define RESET_PIN 6 // NRST active LOW
+
+// Create UWB instance
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200);
 
 const char* NETWORK_ID = "REYAX123";
 const char* TAG_ADDRESS = "TAG00001";
@@ -26,21 +29,21 @@ int seq = 0;
 
 // Uncomment to enable TAG receive callback (useful to log when ANCHOR sends commands)
 // void onTagReceive(int payloadLength, const char* data, int rssi) {
-//     Serial.println("\n*** TAG received command from ANCHOR ***");
-//     Serial.print("Payload Length: "); Serial.println(payloadLength);
-//     Serial.print("Data: "); Serial.println(data);
-//     Serial.print("RSSI: "); Serial.println(rssi);
-//     Serial.println("*************************************\n");
+//     Serial.println(F("\n*** TAG received command from ANCHOR ***"));
+//     Serial.print(F("Payload Length: ")); Serial.println(payloadLength);
+//     Serial.print(F("Data: ")); Serial.println(data);
+//     Serial.print(F("RSSI: ")); Serial.println(rssi);
+//     Serial.println(F("*************************************\n"));
 // }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    Serial.println("\n=== RYUW122 TAG for Indoor Positioning ===");
+    Serial.println(F("\n=== RYUW122 TAG for Indoor Positioning ==="));
 
     if (!uwb.begin()) {
-        Serial.println("ERROR: UWB init failed");
+        Serial.println(F("ERROR: UWB init failed"));
         while(1);
     }
 
@@ -53,7 +56,7 @@ void setup() {
     // (disabled by default - uncomment to enable)
     // uwb.onTagReceive(onTagReceive);
 
-    Serial.print("TAG address: "); Serial.println(TAG_ADDRESS);
+    Serial.print(F("TAG address: ")); Serial.println(TAG_ADDRESS);
 }
 
 void loop() {
@@ -64,12 +67,11 @@ void loop() {
         lastStore = now;
         char payload[RYUW122_MAX_PAYLOAD_LENGTH + 1];
         snprintf(payload, sizeof(payload), "P%03d", seq++);
-        Serial.print("Storing payload in TAG: "); Serial.println(payload);
+        Serial.print(F("Storing payload in TAG: ")); Serial.println(payload);
         if (!uwb.sendMessageFromTag(payload)) {
-            Serial.println("Failed to store payload");
+            Serial.println(F("Failed to store payload"));
         }
     }
 
     delay(10);
 }
-

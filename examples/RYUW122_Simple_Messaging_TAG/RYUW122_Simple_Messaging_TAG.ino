@@ -14,7 +14,10 @@
 
 #include <RYUW122.h>
 
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200);
+#define RESET_PIN 6 // NRST active LOW
+
+// Create UWB instance
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200);
 
 const char* NETWORK_ID = "REYAX123";
 const char* TAG_ADDRESS = "TAG00001";
@@ -26,11 +29,11 @@ int ctr = 0;
 // Uncomment to enable TAG receive callback
 // void onTagReceive(int payloadLength, const char* data, int rssi) {
 //     Serial.println();
-//     Serial.println("### TAG received message from ANCHOR ###");
-//     Serial.print("Payload Length: "); Serial.println(payloadLength);
-//     Serial.print("Message: "); Serial.println(data);
-//     Serial.print("RSSI: "); Serial.println(rssi);
-//     Serial.println("######################################");
+//     Serial.println(F("### TAG received message from ANCHOR ###"));
+//     Serial.print(F("Payload Length: ")); Serial.println(payloadLength);
+//     Serial.print(F("Message: ")); Serial.println(data);
+//     Serial.print(F("RSSI: ")); Serial.println(rssi);
+//     Serial.println(F("######################################"));
 // }
 
 void setup() {
@@ -38,7 +41,7 @@ void setup() {
     while (!Serial);
 
     if (!uwb.begin()) {
-        Serial.println("ERROR: failed to init");
+        Serial.println(F("ERROR: failed to init"));
         while(1);
     }
 
@@ -51,7 +54,7 @@ void setup() {
     // (disabled by default - uncomment to enable)
     // uwb.onTagReceive(onTagReceive);
 
-    Serial.print("TAG address: "); Serial.println(TAG_ADDRESS);
+    Serial.print(F("TAG address: ")); Serial.println(TAG_ADDRESS);
 }
 
 void loop() {
@@ -61,11 +64,10 @@ void loop() {
         lastStore = now;
         char msg[RYUW122_MAX_PAYLOAD_LENGTH + 1];
         snprintf(msg, sizeof(msg), "TG%03d", ctr++);
-        Serial.print("Storing TAG message: "); Serial.println(msg);
+        Serial.print(F("Storing TAG message: ")); Serial.println(msg);
         if (!uwb.sendMessageFromTag(msg)) {
-            Serial.println("Failed to store TAG message");
+            Serial.println(F("Failed to store TAG message"));
         }
     }
     delay(10);
 }
-

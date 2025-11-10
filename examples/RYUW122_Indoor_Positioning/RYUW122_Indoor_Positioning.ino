@@ -9,12 +9,14 @@
 
 #include <RYUW122.h>
 
+#define RESET_PIN 6 // NRST active LOW
+
+// Create UWB instance
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200); // TX=11, RX=10
+
 // ========================================
 // CONFIGURATION
 // ========================================
-
-// Create UWB instance (adjust pins for your board)
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200); // TX=11, RX=10
 
 // Network configuration
 const char* NETWORK_ID = "REYAX123";
@@ -45,4 +47,3 @@ const unsigned long UPDATE_INTERVAL = 2000; // Update position every 2 seconds
 // (trilateration functions and rest of the file kept identical)
 
 // ...existing code...
-

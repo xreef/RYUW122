@@ -12,6 +12,10 @@
 #include "includes/RYUW122_enums.h"
 #include <Stream.h>
 
+#if defined(ARDUINO_ARCH_AVR)
+#include <avr/pgmspace.h>
+#endif
+
 #if !defined(ARDUINO_ARCH_STM32) && !defined(ESP32) && !defined(ARDUINO_ARCH_SAMD) && !defined(ARDUINO_ARCH_MBED) && !defined(__STM32F1__) && !defined(__STM32F4__)
     #define ACTIVATE_SOFTWARE_SERIAL
 #endif
@@ -24,6 +28,7 @@
 #endif
 
 // Uncomment to enable printing out nice debug messages.
+// Note: debug logging consumes RAM and may cause instability on UNO; disabled by default.
 #define RYUW122_DEBUG
 
 // Define where debug output will be printed.
@@ -58,32 +63,32 @@ typedef void (*SimpleDistanceCallback)(const char* fromAddress, float distance, 
 class RYUW122 {
 public:
 #ifdef ACTIVATE_SOFTWARE_SERIAL
-    RYUW122(byte txModulePin, byte rxModulePin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
-    RYUW122(byte txModulePin, byte rxModulePin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
-    RYUW122(byte txModulePin, byte rxModulePin, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
 #endif
 
-    RYUW122(HardwareSerial* serial, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
-    RYUW122(HardwareSerial* serial, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
-    RYUW122(HardwareSerial* serial, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    explicit RYUW122(HardwareSerial* serial, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(HardwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
 
 #ifdef HARDWARE_SERIAL_SELECTABLE_PIN
-    RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, RYUW122BaudRate bpsRate);
-    RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, byte nodeIndicatorPin, RYUW122BaudRate bpsRate);
-    RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, RYUW122BaudRate bpsRate);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate);
 #endif
 
 #ifdef ACTIVATE_SOFTWARE_SERIAL
     RYUW122(SoftwareSerial* serial, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
-    RYUW122(SoftwareSerial* serial, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
-    RYUW122(SoftwareSerial* serial, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(SoftwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(SoftwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
 #endif
 
     /**
      * @brief Constructor for the RYUW122 library.
      * @param serial A pointer to the HardwareSerial or SoftwareSerial instance.
      */
-    RYUW122(Stream* serial);
+    explicit RYUW122(Stream* serial);
 
         /**
      * @brief Initializes the RYUW122 module.
@@ -414,19 +419,29 @@ private:
 
     Stream* st;
 
+    // true se si usa SoftwareSerial, false se si usa HardwareSerial/Stream nativa
     bool isSoftwareSerial = true;
 
-    int16_t txModulePin = -1;
-    int16_t rxModulePin = -1;
+    // Pin sul microcontrollore usati per comunicare con il modulo:
+    // - txModulePin: pin TX del microcontrollore (collegato al RX del modulo)
+    // - rxModulePin: pin RX del microcontrollore (collegato al TX del modulo)
+    int16_t mcuTxPin = -1;
+    int16_t mcuRxPin = -1;
     int16_t nodeIndicatorPin = -1;
-    int16_t m1Pin = -1;
-    int16_t m2Pin = -1;
 
 #ifdef HARDWARE_SERIAL_SELECTABLE_PIN
     uint32_t serialConfig = SERIAL_8N1;
 #endif
 
     int16_t lowResetTriggerInputPin = -1;
+
+    // If lowResetTriggerInputPin >= 0 the library will perform a hardware reset
+    // on begin() toggling the pin LOW for a short time and then HIGH to allow
+    // the module to reboot. This is useful for boards that need explicit reset
+    // of the RYUW122 module (for example ESP32 with custom wiring).
+    //
+    // Hardware reset helper
+    void hardwareResetPin() const;
 
     RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200;
 
@@ -457,15 +472,15 @@ private:
         }
 
         template< typename T >
-        void begin( T &t, uint32_t baud, uint32_t config, int8_t txModulePin, int8_t rxModulePin ) {
+        void begin( T &t, uint32_t baud, uint32_t config, int8_t mcuTxPin, int8_t mcuRxPin ) {
             DEBUG_PRINTLN(F("Begin "));
-            DEBUG_PRINT(F("TX: "));
-            DEBUG_PRINT(txModulePin);
-            DEBUG_PRINT(F("RX: "));
-            DEBUG_PRINT(rxModulePin);
+            DEBUG_PRINT(F("MC TX: "));
+            DEBUG_PRINT(mcuTxPin);
+            DEBUG_PRINT(F(" MC RX: "));
+            DEBUG_PRINT(mcuRxPin);
 
             t.setTimeout(500);
-            t.begin(baud, config, txModulePin, rxModulePin);
+            t.begin(baud, config, mcuTxPin, mcuRxPin);
             stream = &t;
         }
 #endif
@@ -483,27 +498,44 @@ private:
     SimpleDistanceCallback _simpleDistanceCallback = nullptr;
     MeasureUnit _preferredUnit = MeasureUnit::CENTIMETERS;
 
+    // Timeout configuration (milliseconds)
+    // _commandTimeoutMs: default timeout used by sendCommand/sendCommandAndGetResponse when caller passes 0
+    unsigned long _commandTimeoutMs = 2000; // 2 seconds default for AT command responses
+    // Stream timeout passed to Stream::setTimeout() (used by readStringUntil etc.)
+    unsigned long _streamTimeoutMs = 500; // 500 ms default for stream read timeouts
+
+    // Timeout setters/getters
+    void setCommandTimeout(unsigned long ms);
+    unsigned long getCommandTimeout() const;
+
+    void setStreamTimeout(unsigned long ms);
+    unsigned long getStreamTimeout() const;
+
+private:
     /**
      * @brief Sends an AT command and checks for expected response.
      * @param command The AT command string to send.
      * @param expectedResponse The expected response string.
-     * @param timeout Timeout in milliseconds.
+     * @param timeout Timeout in milliseconds (0 = use library default).
      * @return True if expected response was received, false otherwise.
      */
-    bool sendCommand(const char* command, const char* expectedResponse, int timeout = 1000);
+    bool sendCommand(const char* command, const char* expectedResponse, int timeout = 0);
 
     // Overload that accepts flash (F("...")) strings to save RAM
-    bool sendCommand(const char* command, const __FlashStringHelper* expectedResponse, int timeout = 1000);
+    bool sendCommand(const char* command, const __FlashStringHelper* expectedResponse, int timeout = 0);
+    bool sendCommand(const __FlashStringHelper* command, const __FlashStringHelper* expectedResponse, int timeout = 0);
+
 
     /**
      * @brief Sends an AT command and retrieves the response.
      * @param command The AT command string to send.
      * @param response Buffer to store the response.
      * @param responseSize Size of the response buffer.
-     * @param timeout Timeout in milliseconds.
+     * @param timeout Timeout in milliseconds (0 = use library default).
      * @return True if response was received, false otherwise.
      */
-    bool sendCommandAndGetResponse(const char* command, char* response, int responseSize, int timeout = 1000);
+    bool sendCommandAndGetResponse(const char* command, char* response, int responseSize, int timeout = 0);
+    bool sendCommandAndGetResponse(const __FlashStringHelper* command, char* response, int responseSize, int timeout = 0);
 
     /**
      * @brief Parses incoming ANCHOR_RCV messages and triggers callback.
@@ -530,18 +562,10 @@ private:
     int read();
 
     /**
-     * @brief Waits for module to complete transmission using nodeIndicatorPin or timeout.
-     * @param timeout Maximum time to wait in milliseconds.
-     * @param waitNoAux Delay time if no nodeIndicatorPin is configured.
-     * @return True if completed successfully, false if timeout occurred.
-     */
-    bool waitCompleteResponse(unsigned long timeout, unsigned int waitNoAux = 100);
-
-    /**
      * @brief Non-blocking delay implementation using millis().
      * @param timeout Time to wait in milliseconds.
      */
-    void managedDelay(unsigned long timeout);
+    void managedDelay(unsigned long timeout) const;
 
     /**
      * @brief Converts distance from centimeters to the specified unit.

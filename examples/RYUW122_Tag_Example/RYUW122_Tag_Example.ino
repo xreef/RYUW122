@@ -27,12 +27,14 @@
 
 #include <RYUW122.h>
 
+#define RESET_PIN 6 // NRST active LOW
+
 // Define pins for SoftwareSerial (adjust based on your board)
 #define RX_PIN 10  // Connect to RYUW122 TX
 #define TX_PIN 11  // Connect to RYUW122 RX
 
-// Create RYUW122 instance with SoftwareSerial
-RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_115200);
+// Create RYUW122 instance
+RYUW122 uwb(TX_PIN, RX_PIN, RESET_PIN, RYUW122BaudRate::B_115200);
 
 // Configuration parameters
 const char* NETWORK_ID = "REYAX123";
@@ -59,14 +61,14 @@ int dataCounter = 0;
  * @param rssi Received Signal Strength Indication
  */
 void onTagReceive(int payloadLength, const char* data, int rssi) {
-    Serial.println("=== TAG RECEIVED ===");
-    Serial.print("Payload Length: ");
+    Serial.println(F("=== TAG RECEIVED ==="));
+    Serial.print(F("Payload Length: "));
     Serial.println(payloadLength);
-    Serial.print("Data from ANCHOR: ");
+    Serial.print(F("Data from ANCHOR: "));
     Serial.println(data);
-    Serial.print("RSSI: ");
+    Serial.print(F("RSSI: "));
     Serial.println(rssi);
-    Serial.println("====================");
+    Serial.println(F("===================="));
 }
 
 void setup() {
@@ -76,74 +78,74 @@ void setup() {
         ; // Wait for serial port to connect (needed for native USB)
     }
 
-    Serial.println("RYUW122 TAG Example");
-    Serial.println("===================");
+    Serial.println(F("RYUW122 TAG Example"));
+    Serial.println(F("==================="));
 
     // Initialize the UWB module
-    Serial.println("Initializing RYUW122...");
+    Serial.println(F("Initializing RYUW122..."));
     if (!uwb.begin()) {
-        Serial.println("Failed to initialize RYUW122!");
+        Serial.println(F("Failed to initialize RYUW122!"));
         while (1) {
             delay(1000);
         }
     }
-    Serial.println("RYUW122 initialized successfully");
+    Serial.println(F("RYUW122 initialized successfully"));
 
     // Test AT command communication
-    Serial.println("Testing AT communication...");
+    Serial.println(F("Testing AT communication..."));
     if (!uwb.test()) {
-        Serial.println("AT communication test failed!");
+        Serial.println(F("AT communication test failed!"));
         while (1) {
             delay(1000);
         }
     }
-    Serial.println("AT communication OK");
+    Serial.println(F("AT communication OK"));
 
     // Configure as TAG
-    Serial.println("Setting mode to TAG...");
+    Serial.println(F("Setting mode to TAG..."));
     if (!uwb.setMode(RYUW122Mode::TAG)) {
-        Serial.println("Failed to set TAG mode!");
+        Serial.println(F("Failed to set TAG mode!"));
         while (1) {
             delay(1000);
         }
     }
-    Serial.println("TAG mode set");
+    Serial.println(F("TAG mode set"));
 
     // Set Network ID
-    Serial.print("Setting Network ID to: ");
+    Serial.print(F("Setting Network ID to: "));
     Serial.println(NETWORK_ID);
     if (!uwb.setNetworkId(NETWORK_ID)) {
-        Serial.println("Failed to set Network ID!");
+        Serial.println(F("Failed to set Network ID!"));
     }
 
     // Set TAG address
-    Serial.print("Setting TAG address to: ");
+    Serial.print(F("Setting TAG address to: "));
     Serial.println(TAG_ADDRESS);
     if (!uwb.setAddress(TAG_ADDRESS)) {
-        Serial.println("Failed to set address!");
+        Serial.println(F("Failed to set address!"));
     }
 
     // Set encryption password
-    Serial.println("Setting encryption password...");
+    Serial.println(F("Setting encryption password..."));
     if (!uwb.setPassword(PASSWORD)) {
-        Serial.println("Failed to set password!");
+        Serial.println(F("Failed to set password!"));
     }
 
     // Enable RSSI display
-    Serial.println("Enabling RSSI display...");
+    Serial.println(F("Enabling RSSI display..."));
     if (!uwb.setRssiDisplay(RYUW122RSSI::ENABLE)) {
-        Serial.println("Failed to enable RSSI!");
+        Serial.println(F("Failed to enable RSSI!"));
     }
 
     // Optional: Configure TAG RF duty cycle for power saving
     // Example: RF enabled for 1 second, disabled for 1 second
     // Uncomment the lines below to enable power saving mode
     /*
-    Serial.println("Setting TAG RF duty cycle (1sec ON, 1sec OFF)...");
+    Serial.println(F("Setting TAG RF duty cycle (1sec ON, 1sec OFF)..."));
     if (!uwb.setTagRfDutyCycle(1000, 1000)) {
-        Serial.println("Failed to set RF duty cycle!");
+        Serial.println(F("Failed to set RF duty cycle!"));
     } else {
-        Serial.println("RF duty cycle configured");
+        Serial.println(F("RF duty cycle configured"));
     }
     */
 
@@ -153,14 +155,14 @@ void setup() {
     // Display firmware version
     char version[32];
     if (uwb.getFirmwareVersion(version)) {
-        Serial.print("Firmware Version: ");
+        Serial.print(F("Firmware Version: "));
         Serial.println(version);
     }
 
-    Serial.println("\n===================");
-    Serial.println("Setup complete!");
-    Serial.println("Waiting for ANCHOR requests...");
-    Serial.println("===================\n");
+    Serial.println(F("\n==================="));
+    Serial.println(F("Setup complete!"));
+    Serial.println(F("Waiting for ANCHOR requests..."));
+    Serial.println(F("===================\n"));
 
     delay(1000);
 }
@@ -175,14 +177,14 @@ void loop() {
     if (currentTime - lastSyncSend >= SYNC_INTERVAL) {
         lastSyncSend = currentTime;
 
-        Serial.println("\n--- Synchronous Send Example ---");
+        Serial.println(F("\n--- Synchronous Send Example ---"));
 
         char sendData[RYUW122_MAX_PAYLOAD_LENGTH + 1];
         snprintf(sendData, sizeof(sendData), "S%04d", dataCounter++);
 
-        Serial.print("Sending '");
+        Serial.print(F("Sending '"));
         Serial.print(sendData);
-        Serial.println("' to TAG buffer (sync)");
+        Serial.println(F("' to TAG buffer (sync)"));
 
         // This call blocks until +OK response is received or timeout occurs
         // The data is stored in the TAG and will be transmitted when ANCHOR requests it
@@ -193,10 +195,10 @@ void loop() {
         );
 
         if (success) {
-            Serial.println("Data stored in TAG successfully (sync)");
-            Serial.println("Waiting for ANCHOR to request this data...");
+            Serial.println(F("Data stored in TAG successfully (sync)"));
+            Serial.println(F("Waiting for ANCHOR to request this data..."));
         } else {
-            Serial.println("Synchronous send failed or timeout!");
+            Serial.println(F("Synchronous send failed or timeout!"));
         }
     }
 
@@ -204,14 +206,14 @@ void loop() {
     if (currentTime - lastAsyncSend >= ASYNC_INTERVAL) {
         lastAsyncSend = currentTime;
 
-        Serial.println("\n--- Asynchronous Send Example ---");
+        Serial.println(F("\n--- Asynchronous Send Example ---"));
 
         char sendData[RYUW122_MAX_PAYLOAD_LENGTH + 1];
         snprintf(sendData, sizeof(sendData), "A%04d", dataCounter++);
 
-        Serial.print("Sending '");
+        Serial.print(F("Sending '"));
         Serial.print(sendData);
-        Serial.println("' to TAG buffer (async)");
+        Serial.println(F("' to TAG buffer (async)"));
 
         // This call returns immediately after sending the command
         // The data is stored in the TAG and will be transmitted when ANCHOR requests it
@@ -221,14 +223,13 @@ void loop() {
         );
 
         if (success) {
-            Serial.println("Command sent successfully (async)");
-            Serial.println("Data will be transmitted when ANCHOR requests it");
+            Serial.println(F("Command sent successfully (async)"));
+            Serial.println(F("Data will be transmitted when ANCHOR requests it"));
         } else {
-            Serial.println("Asynchronous send failed!");
+            Serial.println(F("Asynchronous send failed!"));
         }
     }
 
     // Small delay to prevent overwhelming the serial output
     delay(10);
 }
-

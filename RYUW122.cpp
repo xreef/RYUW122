@@ -6,41 +6,84 @@
  */
 
 #include "RYUW122.h"
+#include <stdlib.h>
+
+// Helper: safe integer parse using strtol. Returns defVal on null/invalid input.
+static int safeAtoi(const char* s, int defVal = 0) {
+    if (!s) return defVal;
+    char* endptr = nullptr;
+    long val = strtol(s, &endptr, 10);
+    if (endptr == s) return defVal; // no conversion
+    return (int)val;
+}
+
+// Helper: read a line from stream into a char buffer, handling timeout and buffer size.
+// Returns true if a line was read, false on timeout or error.
+static bool readLine(Stream& stream, char* buffer, size_t bufferSize, unsigned long timeout) {
+    unsigned long start = millis();
+    size_t pos = 0;
+    while ((millis() - start) < timeout) {
+        if (stream.available()) {
+            char c = stream.read();
+            if (c == '\n') {
+                buffer[pos] = '\0';
+                return true;
+            }
+            if (pos < bufferSize - 1) {
+                buffer[pos++] = c;
+            }
+        }
+    }
+    buffer[pos] = '\0'; // Null-terminate even on timeout
+    return false; // Timeout
+}
 
 
-RYUW122::RYUW122(Stream* serial) : st(serial) {}
+RYUW122::RYUW122(Stream* serial) : st(serial) {
+    // Quando viene passato un Stream generico, assumiamo hardware-like stream
+    this->hs = nullptr;
+#ifdef ACTIVATE_SOFTWARE_SERIAL
+    this->ss = nullptr;
+#endif
+    this->isSoftwareSerial = false;
+}
 
 #ifdef ACTIVATE_SOFTWARE_SERIAL
-RYUW122::RYUW122(byte txModulePin, byte rxModulePin, RYUW122BaudRate bpsRate){
-    this->txModulePin = txModulePin;
-    this->rxModulePin = rxModulePin;
-    SoftwareSerial* mySerial = new SoftwareSerial((uint8_t)this->txModulePin, (uint8_t)this->rxModulePin); // "RX TX" // @suppress("Abstract class cannot be instantiated")
-    this->ss = mySerial;
+RYUW122::RYUW122(byte mcuTxPin, byte mcuRxPin, RYUW122BaudRate bpsRate){
+    this->mcuTxPin = mcuTxPin;
+    this->mcuRxPin = mcuRxPin;
+    this->ss = nullptr;
     this->hs = nullptr;
-
+    this->st = nullptr;
+    this->isSoftwareSerial = true;
     this->bpsRate = bpsRate;
 }
-RYUW122::RYUW122(byte txModulePin, byte rxModulePin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){
-    this->txModulePin = txModulePin;
-    this->rxModulePin = rxModulePin;
-    this->nodeIndicatorPin = nodeIndicatorPin;
-    SoftwareSerial* mySerial = new SoftwareSerial((uint8_t)this->txModulePin, (uint8_t)this->rxModulePin); // "RX TX" // @suppress("Abstract class cannot be instantiated")
-    this->ss = mySerial;
-    this->hs = nullptr;
-
-    this->bpsRate = bpsRate;
-}
-RYUW122::RYUW122(byte txModulePin, byte rxModulePin, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate){
-    this->txModulePin = txModulePin;
-    this->rxModulePin = rxModulePin;
-
-    this->nodeIndicatorPin = nodeIndicatorPin;
+// New overload: tx, rx, lowResetTriggerInputPin
+RYUW122::RYUW122(byte mcuTxPin, byte mcuRxPin, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate){
+    this->mcuTxPin = mcuTxPin;
+    this->mcuRxPin = mcuRxPin;
 
     this->lowResetTriggerInputPin = lowResetTriggerInputPin;
 
-    SoftwareSerial* mySerial = new SoftwareSerial((uint8_t)this->txModulePin, (uint8_t)this->rxModulePin); // "RX TX" // @suppress("Abstract class cannot be instantiated")
-    this->ss = mySerial;
+    this->ss = nullptr;
     this->hs = nullptr;
+    this->st = nullptr;
+    this->isSoftwareSerial = true;
+
+    this->bpsRate = bpsRate;
+}
+// New overload: tx, rx, lowResetTriggerInputPin, nodeIndicatorPin
+RYUW122::RYUW122(byte mcuTxPin, byte mcuRxPin, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){
+    this->mcuTxPin = mcuTxPin;
+    this->mcuRxPin = mcuRxPin;
+
+    this->lowResetTriggerInputPin = lowResetTriggerInputPin;
+    this->nodeIndicatorPin = nodeIndicatorPin;
+
+    this->ss = nullptr;
+    this->hs = nullptr;
+    this->st = nullptr;
+    this->isSoftwareSerial = true;
 
     this->bpsRate = bpsRate;
 }
@@ -52,73 +95,83 @@ RYUW122::RYUW122(HardwareSerial* serial, RYUW122BaudRate bpsRate){ //, uint32_t 
     this->ss = nullptr;
 #endif
     this->hs = serial;
+    this->st = nullptr;
+    this->isSoftwareSerial = false;
     this->bpsRate = bpsRate;
 }
-RYUW122::RYUW122(HardwareSerial* serial, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){ // , uint32_t serialConfig
-    this->nodeIndicatorPin = nodeIndicatorPin;
+// allow passing only reset pin as second argument
+RYUW122::RYUW122(HardwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate){ // , uint32_t serialConfig
+    this->lowResetTriggerInputPin = lowResetTriggerInputPin;
 #ifdef ACTIVATE_SOFTWARE_SERIAL
     this->ss = nullptr;
 #endif
     this->hs = serial;
+    this->st = nullptr;
+    this->isSoftwareSerial = false;
     this->bpsRate = bpsRate;
 }
-RYUW122::RYUW122(HardwareSerial* serial, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate){ //, uint32_t serialConfig
-    this->nodeIndicatorPin = nodeIndicatorPin;
+// overload with reset pin then node indicator
+RYUW122::RYUW122(HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){ //, uint32_t serialConfig
     this->lowResetTriggerInputPin = lowResetTriggerInputPin;
+    this->nodeIndicatorPin = nodeIndicatorPin;
 
 #ifdef ACTIVATE_SOFTWARE_SERIAL
     this->ss = nullptr;
 #endif
     this->hs = serial;
+    this->st = nullptr;
+    this->isSoftwareSerial = false;
     this->bpsRate = bpsRate;
 }
 
 #ifdef HARDWARE_SERIAL_SELECTABLE_PIN
-RYUW122::RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, RYUW122BaudRate bpsRate, uint32_t serialConfig){
-    this->txModulePin = txModulePin;
-    this->rxModulePin = rxModulePin;
+RYUW122::RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, RYUW122BaudRate bpsRate){
+    this->mcuTxPin = mcuTxPin;
+    this->mcuRxPin = mcuRxPin;
 
 #ifdef ACTIVATE_SOFTWARE_SERIAL
     this->ss = nullptr;
 #endif
 
-    this->serialConfig = serialConfig;
+    // use default member serialConfig from header
 
     this->hs = serial;
 
+    this->st = nullptr;
     this->bpsRate = bpsRate;
 }
-RYUW122::RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, byte nodeIndicatorPin, RYUW122BaudRate bpsRate, uint32_t serialConfig){
-    this->txModulePin = txModulePin;
-    this->rxModulePin = rxModulePin;
-    this->nodeIndicatorPin = nodeIndicatorPin;
-
-#ifdef ACTIVATE_SOFTWARE_SERIAL
-    this->ss = nullptr;
-#endif
-
-    this->serialConfig = serialConfig;
-
-    this->hs = serial;
-
-    this->bpsRate = bpsRate;
-}
-RYUW122::RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate, uint32_t serialConfig){
-    this->txModulePin = txModulePin;
-    this->rxModulePin = rxModulePin;
-
-    this->nodeIndicatorPin = nodeIndicatorPin;
-
+RYUW122::RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate){
+    this->mcuTxPin = mcuTxPin;
+    this->mcuRxPin = mcuRxPin;
     this->lowResetTriggerInputPin = lowResetTriggerInputPin;
 
 #ifdef ACTIVATE_SOFTWARE_SERIAL
     this->ss = nullptr;
 #endif
 
-    this->serialConfig = serialConfig;
+    // use default member serialConfig from header
 
     this->hs = serial;
 
+    this->st = nullptr;
+    this->bpsRate = bpsRate;
+}
+RYUW122::RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){
+    this->mcuTxPin = mcuTxPin;
+    this->mcuRxPin = mcuRxPin;
+
+    this->lowResetTriggerInputPin = lowResetTriggerInputPin;
+    this->nodeIndicatorPin = nodeIndicatorPin;
+
+#ifdef ACTIVATE_SOFTWARE_SERIAL
+    this->ss = nullptr;
+#endif
+
+    // use default member serialConfig from header
+
+    this->hs = serial;
+
+    this->st = nullptr;
     this->bpsRate = bpsRate;
 }
 #endif
@@ -128,50 +181,55 @@ RYUW122::RYUW122(byte txModulePin, byte rxModulePin, HardwareSerial* serial, byt
 RYUW122::RYUW122(SoftwareSerial* serial, RYUW122BaudRate bpsRate){
     this->ss = serial;
     this->hs = nullptr;
+    this->st = nullptr;
+    this->isSoftwareSerial = true;
     this->bpsRate = bpsRate;
 }
-RYUW122::RYUW122(SoftwareSerial* serial, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){
-    this->nodeIndicatorPin = nodeIndicatorPin;
-    this->ss = serial;
-    this->hs = nullptr;
-    this->bpsRate = bpsRate;
-}
-RYUW122::RYUW122(SoftwareSerial* serial, byte nodeIndicatorPin, byte lowResetTriggerInputPin,   RYUW122BaudRate bpsRate){
-    this->nodeIndicatorPin = nodeIndicatorPin;
+RYUW122::RYUW122(SoftwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate){
     this->lowResetTriggerInputPin = lowResetTriggerInputPin;
     this->ss = serial;
     this->hs = nullptr;
+    this->st = nullptr;
+    this->isSoftwareSerial = true;
+    this->bpsRate = bpsRate;
+}
+RYUW122::RYUW122(SoftwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate){
+    this->lowResetTriggerInputPin = lowResetTriggerInputPin;
+    this->nodeIndicatorPin = nodeIndicatorPin;
+    this->ss = serial;
+    this->hs = nullptr;
+    this->st = nullptr;
+    this->isSoftwareSerial = true;
     this->bpsRate = bpsRate;
 }
 #endif
 
 bool RYUW122::begin(){
     // Display pin configuration for debugging
-    DEBUG_PRINT(F("RX Module Pin ---> "));
-    DEBUG_PRINTLN(this->txModulePin);
-    DEBUG_PRINT(F("TX Module Pin ---> "));
-    DEBUG_PRINTLN(this->rxModulePin);
-    DEBUG_PRINT(F("Node Indicator Pin (AUX) ---> "));
+    // mcuTxPin: microcontroller TX pin (connects to module RX)
+    // mcuRxPin: microcontroller RX pin (connects to module TX)
+    DEBUG_PRINT(F("MC TX Pin (to module RX) ---> "));
+    DEBUG_PRINTLN(this->mcuTxPin);
+    DEBUG_PRINT(F("MC RX Pin (from module TX) ---> "));
+    DEBUG_PRINTLN(this->mcuRxPin);
+    DEBUG_PRINT(F("Node Indicator Pin  ---> "));
     DEBUG_PRINTLN(this->nodeIndicatorPin);
-    DEBUG_PRINT(F("Low Reset Trigger Pin (M0) ---> "));
+    DEBUG_PRINT(F("Low Reset Trigger Pin  ---> "));
     DEBUG_PRINTLN(this->lowResetTriggerInputPin);
-    DEBUG_PRINT(F("M1 Pin ---> "));
-    DEBUG_PRINTLN(this->m1Pin);
-    DEBUG_PRINT(F("M2 Pin ---> "));
-    DEBUG_PRINTLN(this->m2Pin);
 
-    // Initialize node indicator pin (AUX) if configured
+    // Initialize node indicator pin  if configured
     if (this->nodeIndicatorPin != -1) {
         pinMode(this->nodeIndicatorPin, INPUT);
-        DEBUG_PRINTLN(F("Initialized node indicator (AUX) pin"));
+        DEBUG_PRINTLN(F("Initialized node indicator  pin"));
     }
 
-    // Initialize low reset trigger pin (M0) if configured
+    // Initialize low reset trigger pin  if configured
     if (this->lowResetTriggerInputPin != -1) {
         pinMode(this->lowResetTriggerInputPin, OUTPUT);
-        DEBUG_PRINTLN(F("Initialized low reset trigger (M0) pin"));
-        digitalWrite(this->lowResetTriggerInputPin, HIGH);
+        // DEBUG_PRINTLN(F("Initialized low reset trigger  pin"));
+        // digitalWrite(this->lowResetTriggerInputPin, HIGH);
     }
+
 
     // Initialize serial communication based on configured type
     if (this->st){
@@ -186,9 +244,9 @@ bool RYUW122::begin(){
         DEBUG_PRINTLN(F("Using Hardware Serial"));
 
 #ifdef HARDWARE_SERIAL_SELECTABLE_PIN
-        if(this->txModulePin != -1 && this->rxModulePin != -1) {
+        if(this->mcuTxPin != -1 && this->mcuRxPin != -1) {
             DEBUG_PRINTLN(F("Hardware Serial with custom TX/RX pins"));
-            this->serialDef.begin(*this->hs, (uint32_t)this->bpsRate, this->serialConfig, this->txModulePin, this->rxModulePin);
+            this->serialDef.begin(*this->hs, (uint32_t)this->bpsRate, this->serialConfig, this->mcuTxPin, this->mcuRxPin);
         }else{
             this->serialDef.begin(*this->hs, (uint32_t)this->bpsRate, this->serialConfig);
         }
@@ -208,62 +266,58 @@ bool RYUW122::begin(){
         this->serialDef.begin(*this->ss, (uint32_t)this->bpsRate);
     }    else{
         DEBUG_PRINTLN(F("Using Software Serial (creating new instance with pins)"));
-        SoftwareSerial* mySerial = new SoftwareSerial((int)this->txModulePin, (int)this->rxModulePin);
+        // SoftwareSerial constructor expects (rxPin, txPin)
+        SoftwareSerial* mySerial = new SoftwareSerial((int)this->mcuRxPin, (int)this->mcuTxPin);
         this->ss = mySerial;
 
         DEBUG_PRINT(F("Software Serial RX Pin: "));
-        DEBUG_PRINTLN((int)this->txModulePin);
+        DEBUG_PRINTLN((int)this->mcuRxPin);
         DEBUG_PRINT(F("Software Serial TX Pin: "));
-        DEBUG_PRINTLN((int)this->rxModulePin);
+        DEBUG_PRINTLN((int)this->mcuTxPin);
 
         this->serialDef.begin(*this->ss, (uint32_t)this->bpsRate);
 #endif
     }
 
+    // If a hardware reset pin is provided, perform a hardware reset of the module
+    // to ensure it starts in a known state. This mirrors the behaviour used in
+    // example sketches where the NRST pin is toggled LOW for a few ms.
+    if (this->lowResetTriggerInputPin != -1) {
+        DEBUG_PRINTLN(F("Performing hardware reset via reset pin"));
+        // small delay to ensure pin mode settled
+        // delay(5);
+        hardwareResetPin();
+        // allow module to boot
+        // delay(100);
+        // drain any initial messages if present
+        DEBUG_PRINTLN(F("Draining initial messages"));
+        // Use a short timeout so we don't block forever if the module keeps sending data
+        unsigned long _drainStart = millis();
+        const unsigned long _drainIdleTimeout = 200; // ms without data to consider draining complete
+        while (this->serialDef.stream) {
+            // Read all available bytes and reset the idle timer
+            while (this->serialDef.stream->available()) {
+                (void)this->serialDef.stream->read();
+                _drainStart = millis();
+            }
+            // If no data arrived for _drainIdleTimeout ms, we're done
+            if ((millis() - _drainStart) > _drainIdleTimeout) break;
+        }
+        DEBUG_PRINTLN(F("Complete!"));
+    }
+
     // Set serial timeout for AT command responses
-    this->serialDef.stream->setTimeout(100);
+    this->serialDef.stream->setTimeout((unsigned long)this->_streamTimeoutMs);
+
+    // Warn if using SoftwareSerial at 115200 baud, common issue on UNO
+    #ifdef ACTIVATE_SOFTWARE_SERIAL
+    if (this->bpsRate == RYUW122BaudRate::B_115200) {
+        DEBUG_PRINTLN(F("Warning: Using SoftwareSerial at 115200 baud, may not be reliable on UNO"));
+    }
+    #endif
 
     // Return success if serial stream is initialized
     return this->serialDef.stream != nullptr;
-}
-
-/**
- * @brief Waits for the module to complete transmission.
- * Uses nodeIndicatorPin (AUX) if available, otherwise uses a delay.
- * Provides timeout protection to avoid infinite loops.
- *
- * @param timeout Maximum time to wait in milliseconds
- * @param waitNoAux Delay time in ms if no AUX pin is configured
- * @return True if completed successfully, false if timeout occurred
- */
-bool RYUW122::waitCompleteResponse(unsigned long timeout, unsigned int waitNoAux) {
-    unsigned long t = millis();
-
-    // Protect against millis() overflow
-    if (((unsigned long) (t + timeout)) == 0){
-        t = 0;
-    }
-
-    // If AUX pin is configured, wait for it to go HIGH
-    if (this->nodeIndicatorPin != -1) {
-        while (digitalRead(this->nodeIndicatorPin) == LOW) {
-            if ((millis() - t) > timeout){
-                DEBUG_PRINTLN(F("Timeout error while waiting for AUX pin!"));
-                return false;
-            }
-        }
-        DEBUG_PRINTLN(F("AUX pin is HIGH - transmission complete"));
-    }
-    else {
-        // If no AUX pin available, use fixed delay
-        this->managedDelay(waitNoAux);
-        DEBUG_PRINTLN(F("No AUX pin - using fixed delay"));
-    }
-
-    // Per datasheet, wait additional 20ms after AUX goes high
-    this->managedDelay(20);
-    DEBUG_PRINTLN(F("Module ready"));
-    return true;
 }
 
 /**
@@ -273,7 +327,7 @@ bool RYUW122::waitCompleteResponse(unsigned long timeout, unsigned int waitNoAux
  *
  * @param timeout Time to wait in milliseconds
  */
-void RYUW122::managedDelay(unsigned long timeout) {
+void RYUW122::managedDelay(unsigned long timeout) const {
     unsigned long t = millis();
 
     // Protect against millis() overflow
@@ -305,21 +359,22 @@ int RYUW122::read() {
 
 void RYUW122::loop() {
     if (this->serialDef.stream && this->serialDef.stream->available()) {
-        String response = this->serialDef.stream->readStringUntil('\n');
-        response.trim();
-        if (response.length() > 0) {
-            DEBUG_PRINT(F("AT< "));
-            DEBUG_PRINTLN(response);
-            if (response.startsWith(F("+ANCHOR_RCV="))) {
-                char buf[64];
-                strncpy(buf, response.c_str(), sizeof(buf)-1);
-                buf[sizeof(buf)-1] = '\0';
-                parseAnchorReceive(buf);
-            } else if (response.startsWith(F("+TAG_RCV="))) {
-                char buf[64];
-                strncpy(buf, response.c_str(), sizeof(buf)-1);
-                buf[sizeof(buf)-1] = '\0';
-                parseTagReceive(buf);
+        char response[64];
+        if (readLine(*this->serialDef.stream, response, sizeof(response), 1000)) {
+            // Trim whitespace
+            char* p = response;
+            while (isspace(*p)) p++;
+            char* end = p + strlen(p) - 1;
+            while (end > p && isspace(*end)) *end-- = '\0';
+
+            if (strlen(p) > 0) {
+                DEBUG_PRINT(F("AT< "));
+                DEBUG_PRINTLN(p);
+                if (strncmp_P(p, PSTR("+ANCHOR_RCV="), 12) == 0) {
+                    parseAnchorReceive(p);
+                } else if (strncmp_P(p, PSTR("+TAG_RCV="), 9) == 0) {
+                    parseTagReceive(p);
+                }
             }
         }
     }
@@ -327,15 +382,17 @@ void RYUW122::loop() {
 
 bool RYUW122::setMode(RYUW122Mode mode) {
     char command[20];
-    snprintf(command, sizeof(command), "AT+MODE=%d", (int)mode);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+MODE=%d"), (int)mode);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 RYUW122Mode RYUW122::getMode() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+MODE?", response, sizeof(response))) {
-        if (strstr(response, "+MODE=") != nullptr) {
-            return (RYUW122Mode)atoi(response + 6);
+    if (sendCommandAndGetResponse(F("AT+MODE?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+MODE=")) != nullptr) {
+            return (RYUW122Mode)safeAtoi(response + 6, (int)RYUW122Mode::TAG);
         }
     }
     return RYUW122Mode::TAG; // Default value
@@ -343,15 +400,17 @@ RYUW122Mode RYUW122::getMode() {
 
 bool RYUW122::setBaudRate(RYUW122BaudRate baudRate) {
     char command[30];
-    snprintf(command, sizeof(command), "AT+IPR=%u", (unsigned)baudRate);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+IPR=%u"), (unsigned)baudRate);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 RYUW122BaudRate RYUW122::getBaudRate() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+IPR?", response, sizeof(response))) {
-        if (strstr(response, "+IPR=") != nullptr) {
-            return (RYUW122BaudRate)atoi(response + 5);
+    if (sendCommandAndGetResponse(F("AT+IPR?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+IPR=")) != nullptr) {
+            return (RYUW122BaudRate)safeAtoi(response + 5, (int)RYUW122BaudRate::B_115200);
         }
     }
     return RYUW122BaudRate::B_115200; // Default value
@@ -359,15 +418,17 @@ RYUW122BaudRate RYUW122::getBaudRate() {
 
 bool RYUW122::setRfChannel(RYUW122RFChannel channel) {
     char command[20];
-    snprintf(command, sizeof(command), "AT+CHANNEL=%d", (int)channel);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+CHANNEL=%d"), (int)channel);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 RYUW122RFChannel RYUW122::getRfChannel() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+CHANNEL?", response, sizeof(response))) {
-        if (strstr(response, "+CHANNEL=") != nullptr) {
-            return (RYUW122RFChannel)atoi(response + 9);
+    if (sendCommandAndGetResponse(F("AT+CHANNEL?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+CHANNEL=")) != nullptr) {
+            return (RYUW122RFChannel)safeAtoi(response + 9, (int)RYUW122RFChannel::CH_5);
         }
     }
     return RYUW122RFChannel::CH_5; // Default value
@@ -375,15 +436,17 @@ RYUW122RFChannel RYUW122::getRfChannel() {
 
 bool RYUW122::setBandwidth(RYUW122Bandwidth bandwidth) {
     char command[25];
-    snprintf(command, sizeof(command), "AT+BANDWIDTH=%d", (int)bandwidth);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+BANDWIDTH=%d"), (int)bandwidth);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 RYUW122Bandwidth RYUW122::getBandwidth() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+BANDWIDTH?", response, sizeof(response))) {
-        if (strstr(response, "+BANDWIDTH=") != nullptr) {
-            return (RYUW122Bandwidth)atoi(response + 11);
+    if (sendCommandAndGetResponse(F("AT+BANDWIDTH?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+BANDWIDTH=")) != nullptr) {
+            return (RYUW122Bandwidth)safeAtoi(response + 11, (int)RYUW122Bandwidth::BW_850K);
         }
     }
     return RYUW122Bandwidth::BW_850K; // Default value
@@ -391,13 +454,15 @@ RYUW122Bandwidth RYUW122::getBandwidth() {
 
 bool RYUW122::setNetworkId(const char* networkId) {
     char command[64];
-    snprintf(command, sizeof(command), "AT+NETWORKID=%s", networkId);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+NETWORKID=%s"), networkId);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 bool RYUW122::getNetworkId(char* networkId) {
-    if (sendCommandAndGetResponse("AT+NETWORKID?", _buffer, sizeof(_buffer))) {
-        if (strstr(_buffer, "+NETWORKID=") != nullptr) {
+    if (sendCommandAndGetResponse(F("AT+NETWORKID?"), _buffer, sizeof(_buffer))) {
+        if (strstr_P(_buffer, PSTR("+NETWORKID=")) != nullptr) {
             strncpy(networkId, _buffer + 11, 8);
             networkId[8] = '\0';
             return true;
@@ -408,13 +473,15 @@ bool RYUW122::getNetworkId(char* networkId) {
 
 bool RYUW122::setAddress(const char* address) {
     char command[64];
-    snprintf(command, sizeof(command), "AT+ADDRESS=%s", address);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+ADDRESS=%s"), address);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 bool RYUW122::getAddress(char* address) {
-    if (sendCommandAndGetResponse("AT+ADDRESS?", _buffer, sizeof(_buffer))) {
-        if (strstr(_buffer, "+ADDRESS=") != nullptr) {
+    if (sendCommandAndGetResponse(F("AT+ADDRESS?"), _buffer, sizeof(_buffer))) {
+        if (strstr_P(_buffer, PSTR("+ADDRESS=")) != nullptr) {
             strncpy(address, _buffer + 9, 8);
             address[8] = '\0';
             return true;
@@ -424,8 +491,8 @@ bool RYUW122::getAddress(char* address) {
 }
 
 bool RYUW122::getUid(char* uid) {
-    if (sendCommandAndGetResponse("AT+UID?", _buffer, sizeof(_buffer))) {
-        if (strstr(_buffer, "+UID=") != nullptr) {
+    if (sendCommandAndGetResponse(F("AT+UID?"), _buffer, sizeof(_buffer))) {
+        if (strstr_P(_buffer, PSTR("+UID=")) != nullptr) {
             strncpy(uid, _buffer + 5, 16);
             uid[16] = '\0';
             return true;
@@ -436,13 +503,15 @@ bool RYUW122::getUid(char* uid) {
 
 bool RYUW122::setPassword(const char* password) {
     char command[64];
-    snprintf(command, sizeof(command), "AT+CPIN=%s", password);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+CPIN=%s"), password);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 bool RYUW122::getPassword(char* password) {
-    if (sendCommandAndGetResponse("AT+CPIN?", _buffer, sizeof(_buffer))) {
-        if (strstr(_buffer, "+CPIN=") != nullptr) {
+    if (sendCommandAndGetResponse(F("AT+CPIN?"), _buffer, sizeof(_buffer))) {
+        if (strstr_P(_buffer, PSTR("+CPIN=")) != nullptr) {
             strncpy(password, _buffer + 6, 32);
             password[32] = '\0';
             return true;
@@ -453,15 +522,22 @@ bool RYUW122::getPassword(char* password) {
 
 bool RYUW122::setTagRfDutyCycle(int rfEnableTime, int rfDisableTime) {
     char command[32];
-    snprintf(command, sizeof(command), "AT+TAGD=%d,%d", rfEnableTime, rfDisableTime);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+TAGD=%d,%d"), rfEnableTime, rfDisableTime);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 bool RYUW122::getTagRfDutyCycle(int& rfEnableTime, int& rfDisableTime) {
     char response[64];
-    if (sendCommandAndGetResponse("AT+TAGD?", response, sizeof(response))) {
-        if (strstr(response, "+TAGD=") != nullptr) {
-            sscanf(response + 6, "%d,%d", &rfEnableTime, &rfDisableTime);
+    if (sendCommandAndGetResponse(F("AT+TAGD?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+TAGD=")) != nullptr) {
+            // parse two ints from response+6
+            char* p = response + 6;
+            char* a = strtok(p, ",");
+            char* b = strtok(nullptr, ",");
+            if (a) rfEnableTime = safeAtoi(a, rfEnableTime);
+            if (b) rfDisableTime = safeAtoi(b, rfDisableTime);
             return true;
         }
     }
@@ -470,15 +546,17 @@ bool RYUW122::getTagRfDutyCycle(int& rfEnableTime, int& rfDisableTime) {
 
 bool RYUW122::setRfPower(RYUW122RFPower power) {
     char command[20];
-    snprintf(command, sizeof(command), "AT+CRFOP=%d", (int)power);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+CRFOP=%d"), (int)power);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 RYUW122RFPower RYUW122::getRfPower() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+CRFOP?", response, sizeof(response))) {
-        if (strstr(response, "+CRFOP=") != nullptr) {
-            return (RYUW122RFPower)atoi(response + 7);
+    if (sendCommandAndGetResponse(F("AT+CRFOP?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+CRFOP=")) != nullptr) {
+            return (RYUW122RFPower)safeAtoi(response + 7, (int)RYUW122RFPower::N32dBm);
         }
     }
     return RYUW122RFPower::N32dBm; // Default value
@@ -486,7 +564,7 @@ RYUW122RFPower RYUW122::getRfPower() {
 
 bool RYUW122::anchorSendData(const char* tagAddress, int payloadLength, const char* data) {
     char command[64];
-    snprintf(command, sizeof(command), "AT+ANCHOR_SEND=%s,%d,%s", tagAddress, payloadLength, data);
+    snprintf_P(command, sizeof(command), PSTR("AT+ANCHOR_SEND=%s,%d,%s"), tagAddress, payloadLength, data);
     return sendCommand(command, F("+OK"));
 }
 
@@ -507,7 +585,7 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
 
     // Send the command
     char command[64];
-    snprintf(command, sizeof(command), "AT+ANCHOR_SEND=%s,%d,%s", tagAddress, payloadLength, data ? data : "");
+    snprintf_P(command, sizeof(command), PSTR("AT+ANCHOR_SEND=%s,%d,%s"), tagAddress, payloadLength, data ? data : "");
 
     if (!this->serialDef.stream) return false;
 
@@ -516,28 +594,24 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
     DEBUG_PRINTLN(command);
 
     this->serialDef.stream->println(command);
+    if (isSoftwareSerial) managedDelay(10); // Give SoftwareSerial time to switch
 
     unsigned long startTime = millis();
     bool receivedOk = false;
     bool receivedData = false;
+    char response[64];
 
     // Wait for +OK and +ANCHOR_RCV response
     while ((millis() - startTime) < timeout) {
-        if (this->serialDef.stream->available()) {
-            String response = this->serialDef.stream->readStringUntil('\n');
-            response.trim();
+        if (readLine(*this->serialDef.stream, response, sizeof(response), timeout - (millis() - startTime))) {
             DEBUG_PRINT(F("AT< "));
             DEBUG_PRINTLN(response);
 
-            if (response.startsWith(F("+OK"))) {
+            if (strncmp_P(response, PSTR("+OK"), 3) == 0) {
                 receivedOk = true;
-            } else if (response.startsWith(F("+ANCHOR_RCV="))) {
+            } else if (strncmp_P(response, PSTR("+ANCHOR_RCV="), 12) == 0) {
                 // Parse the response: +ANCHOR_RCV=<TAG Address>,<PAYLOAD LENGTH>,<TAG DATA>,<DISTANCE>,<RSSI>
-                char buf[64];
-                strncpy(buf, response.c_str(), sizeof(buf)-1);
-                buf[sizeof(buf)-1] = '\0';
-                /* use compile-time length to avoid runtime strlen on literal */
-                char* ptr = buf + (sizeof("+ANCHOR_RCV=") - 1);
+                char* ptr = response + 12;
                 char* recvTagAddr = strtok(ptr, ",");
                 strtok(nullptr, ","); // Skip payload length
                 char* recvData = strtok(nullptr, ",");
@@ -551,10 +625,10 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
                         responseData[RYUW122_MAX_PAYLOAD_LENGTH] = '\0';
                     }
                     if (distance && recvDistanceStr) {
-                        *distance = atoi(recvDistanceStr);
+                        *distance = safeAtoi(recvDistanceStr, *distance);
                     }
                     if (rssi && recvRssiStr) {
-                        *rssi = atoi(recvRssiStr);
+                        *rssi = safeAtoi(recvRssiStr, *rssi);
                     }
                     receivedData = true;
                     break;
@@ -568,7 +642,7 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
 
 bool RYUW122::tagSendData(int payloadLength, const char* data) {
     char command[64];
-    snprintf(command, sizeof(command), "AT+TAG_SEND=%d,%s", payloadLength, data);
+    snprintf_P(command, sizeof(command), PSTR("AT+TAG_SEND=%d,%s"), payloadLength, data);
     return sendCommand(command, F("+OK"));
 }
 
@@ -585,7 +659,7 @@ bool RYUW122::tagSendDataSync(int payloadLength, const char* data, unsigned long
 
     // Send the command
     char command[64];
-    snprintf(command, sizeof(command), "AT+TAG_SEND=%d,%s", payloadLength, data ? data : "");
+    snprintf_P(command, sizeof(command), PSTR("AT+TAG_SEND=%d,%s"), payloadLength, data ? data : "");
 
     if (!this->serialDef.stream) return false;
 
@@ -594,18 +668,18 @@ bool RYUW122::tagSendDataSync(int payloadLength, const char* data, unsigned long
     DEBUG_PRINTLN(command);
 
     this->serialDef.stream->println(command);
+    if (isSoftwareSerial) managedDelay(10); // Give SoftwareSerial time to switch
 
     unsigned long startTime = millis();
+    char response[64];
 
     // Wait for +OK response
     while ((millis() - startTime) < timeout) {
-        if (this->serialDef.stream->available()) {
-            String response = this->serialDef.stream->readStringUntil('\n');
-            response.trim();
+        if (readLine(*this->serialDef.stream, response, sizeof(response), timeout - (millis() - startTime))) {
             DEBUG_PRINT(F("AT< "));
             DEBUG_PRINTLN(response);
 
-            if (response.startsWith(F("+OK"))) {
+            if (strncmp_P(response, PSTR("+OK"), 3) == 0) {
                 return true;
             }
         }
@@ -616,15 +690,17 @@ bool RYUW122::tagSendDataSync(int payloadLength, const char* data, unsigned long
 
 bool RYUW122::setRssiDisplay(RYUW122RSSI rssi) {
     char command[20];
-    snprintf(command, sizeof(command), "AT+RSSI=%d", (int)rssi);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+RSSI=%d"), (int)rssi);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 RYUW122RSSI RYUW122::getRssiDisplay() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+RSSI?", response, sizeof(response))) {
-        if (strstr(response, "+RSSI=") != nullptr) {
-            return (RYUW122RSSI)atoi(response + 6);
+    if (sendCommandAndGetResponse(F("AT+RSSI?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+RSSI=")) != nullptr) {
+            return (RYUW122RSSI)safeAtoi(response + 6, (int)RYUW122RSSI::DISABLE);
         }
     }
     return RYUW122RSSI::DISABLE; // Default value
@@ -632,23 +708,25 @@ RYUW122RSSI RYUW122::getRssiDisplay() {
 
 bool RYUW122::setDistanceCalibration(int calibrationValue) {
     char command[20];
-    snprintf(command, sizeof(command), "AT+CAL=%d", calibrationValue);
-    return sendCommand(command, F("+OK"));
+    snprintf_P(command, sizeof(command), PSTR("AT+CAL=%d"), calibrationValue);
+    bool result = sendCommand(command, F("+OK"));
+    if (result) managedDelay(100);
+    return result;
 }
 
 int RYUW122::getDistanceCalibration() {
     char response[64];
-    if (sendCommandAndGetResponse("AT+CAL?", response, sizeof(response))) {
-        if (strstr(response, "+CAL=") != nullptr) {
-            return atoi(response + 5);
+    if (sendCommandAndGetResponse(F("AT+CAL?"), response, sizeof(response))) {
+        if (strstr_P(response, PSTR("+CAL=")) != nullptr) {
+            return safeAtoi(response + 5, 0);
         }
     }
     return 0; // Default value
 }
 
 bool RYUW122::getFirmwareVersion(char* version) {
-    if (sendCommandAndGetResponse("AT+VER?", _buffer, sizeof(_buffer))) {
-        if (strstr(_buffer, "+VER=") != nullptr) {
+    if (sendCommandAndGetResponse(F("AT+VER?"), _buffer, sizeof(_buffer))) {
+        if (strstr_P(_buffer, PSTR("+VER=")) != nullptr) {
             strncpy(version, _buffer + 5, 16);
             version[16] = '\0';
             return true;
@@ -658,15 +736,15 @@ bool RYUW122::getFirmwareVersion(char* version) {
 }
 
 bool RYUW122::factoryReset() {
-    return sendCommand("AT+FACTORY", F("+FACTORY"));
+    return sendCommand(F("AT+FACTORY"), F("+FACTORY"));
 }
 
 bool RYUW122::reset() {
-    return sendCommand("AT+RESET", F("+RESET"));
+    return sendCommand(F("AT+RESET"), F("+RESET"));
 }
 
 bool RYUW122::test() {
-    return sendCommand("AT", F("+OK"));
+    return sendCommand(F("AT"), F("+OK"));
 }
 
 void RYUW122::onAnchorReceive(AnchorReceiveCallback callback) {
@@ -677,75 +755,115 @@ void RYUW122::onTagReceive(TagReceiveCallback callback) {
     _tagReceiveCallback = callback;
 }
 
-bool RYUW122::sendCommand(const char* command, const char* expectedResponse, int timeout) {
+bool RYUW122::sendCommand(const __FlashStringHelper* command, const __FlashStringHelper* expectedResponse, int timeout) {
     if (!this->serialDef.stream) return false;
 
-    // Debug: show the command being sent
+    if (timeout == 0) timeout = (int)this->_commandTimeoutMs;
+
+    while (this->serialDef.stream->available()) {
+        (void)this->serialDef.stream->read();
+    }
+
     DEBUG_PRINT(F("AT> "));
     DEBUG_PRINTLN(command);
 
     this->serialDef.stream->println(command);
-    unsigned long start = millis();
-    String response;
-    while ((millis() - start) < (unsigned long)timeout) {
-        if (this->serialDef.stream->available()) {
-            response = this->serialDef.stream->readStringUntil('\n');
-            response.trim();
-            break;
-        }
+    if (isSoftwareSerial) managedDelay(10);
+
+    char response[64];
+    if (readLine(*this->serialDef.stream, response, sizeof(response), timeout)) {
+        DEBUG_PRINT(F("AT< "));
+        DEBUG_PRINTLN(response);
+        
+        char expected[32];
+        strncpy_P(expected, (const char*)expectedResponse, sizeof(expected));
+        expected[sizeof(expected)-1] = '\0';
+        
+        return strncmp(response, expected, strlen(expected)) == 0;
     }
-    DEBUG_PRINT(F("AT< "));
-    DEBUG_PRINTLN(response);
-    return response.startsWith(expectedResponse);
+    
+    DEBUG_PRINTLN(F("AT< <no response> (timeout)"));
+    return false;
 }
 
-// Overload: accept flash string (F("...")) as expected response
 bool RYUW122::sendCommand(const char* command, const __FlashStringHelper* expectedResponse, int timeout) {
     if (!this->serialDef.stream) return false;
 
-    // Debug: show the command being sent
+    if (timeout == 0) timeout = (int)this->_commandTimeoutMs;
+
+    while (this->serialDef.stream->available()) {
+        (void)this->serialDef.stream->read();
+    }
+
     DEBUG_PRINT(F("AT> "));
     DEBUG_PRINTLN(command);
 
     this->serialDef.stream->println(command);
-    unsigned long start = millis();
-    String response;
-    while ((millis() - start) < (unsigned long)timeout) {
-        if (this->serialDef.stream->available()) {
-            response = this->serialDef.stream->readStringUntil('\n');
-            response.trim();
-            break;
-        }
+    if (isSoftwareSerial) managedDelay(10);
+
+    char response[64];
+    if (readLine(*this->serialDef.stream, response, sizeof(response), timeout)) {
+        DEBUG_PRINT(F("AT< "));
+        DEBUG_PRINTLN(response);
+        
+        char expected[32];
+        strncpy_P(expected, (const char*)expectedResponse, sizeof(expected));
+        expected[sizeof(expected)-1] = '\0';
+        
+        return strncmp(response, expected, strlen(expected)) == 0;
     }
-    DEBUG_PRINT(F("AT< "));
-    DEBUG_PRINTLN(response);
-    return response.startsWith(expectedResponse);
+    
+    DEBUG_PRINTLN(F("AT< <no response> (timeout)"));
+    return false;
+}
+
+bool RYUW122::sendCommandAndGetResponse(const __FlashStringHelper* command, char* response, int responseSize, int timeout) {
+    if (!this->serialDef.stream) return false;
+
+    if (timeout == 0) timeout = (int)this->_commandTimeoutMs;
+
+    while (this->serialDef.stream->available()) {
+        (void)this->serialDef.stream->read();
+    }
+
+    DEBUG_PRINT(F("AT> "));
+    DEBUG_PRINTLN(command);
+
+    this->serialDef.stream->println(command);
+    if (isSoftwareSerial) managedDelay(10);
+
+    if (readLine(*this->serialDef.stream, response, responseSize, timeout)) {
+        DEBUG_PRINT(F("AT< "));
+        DEBUG_PRINTLN(response);
+        return true;
+    }
+    
+    DEBUG_PRINTLN(F("AT< <no response> (timeout)"));
+    return false;
 }
 
 bool RYUW122::sendCommandAndGetResponse(const char* command, char* response, int responseSize, int timeout) {
     if (!this->serialDef.stream) return false;
 
-    // Debug: show the command being sent
+    if (timeout == 0) timeout = (int)this->_commandTimeoutMs;
+
+    while (this->serialDef.stream->available()) {
+        (void)this->serialDef.stream->read();
+    }
+
     DEBUG_PRINT(F("AT> "));
     DEBUG_PRINTLN(command);
 
     this->serialDef.stream->println(command);
-    unsigned long start = millis();
-    String res;
-    while ((millis() - start) < (unsigned long)timeout) {
-        if (this->serialDef.stream->available()) {
-            res = this->serialDef.stream->readStringUntil('\n');
-            res.trim();
-            break;
-        }
-    }
-    DEBUG_PRINT(F("AT< "));
-    DEBUG_PRINTLN(res);
-    if (res.length() > 0) {
-        strncpy(response, res.c_str(), responseSize - 1);
-        response[responseSize - 1] = '\0';
+    if (isSoftwareSerial) managedDelay(10);
+
+    if (readLine(*this->serialDef.stream, response, responseSize, timeout)) {
+        DEBUG_PRINT(F("AT< "));
+        DEBUG_PRINTLN(response);
         return true;
     }
+    
+    DEBUG_PRINTLN(F("AT< <no response> (timeout)"));
     return false;
 }
 
@@ -758,9 +876,9 @@ void RYUW122::parseAnchorReceive(char* response) {
     char* tagData = strtok(nullptr, ",");
     char* distanceStr = strtok(nullptr, ",");
     char* rssiStr = strtok(nullptr, ",\r\n");
-    int payloadLength = payloadStr ? atoi(payloadStr) : 0;
-    int distance = distanceStr ? atoi(distanceStr) : 0;
-    int rssi = rssiStr ? atoi(rssiStr) : 0;
+    int payloadLength = payloadStr ? safeAtoi(payloadStr, 0) : 0;
+    int distance = distanceStr ? safeAtoi(distanceStr, 0) : 0;
+    int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
 
     // Trigger original callback if registered
     if (_anchorReceiveCallback) {
@@ -787,8 +905,8 @@ void RYUW122::parseTagReceive(char* response) {
         char* payloadStr = strtok(ptr, ",");
         char* data = strtok(nullptr, ",");
         char* rssiStr = strtok(nullptr, ",\r\n");
-        int payloadLength = payloadStr ? atoi(payloadStr) : 0;
-        int rssi = rssiStr ? atoi(rssiStr) : 0;
+        int payloadLength = payloadStr ? safeAtoi(payloadStr, 0) : 0;
+        int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
         _tagReceiveCallback(payloadLength, data ? data : "", rssi);
     }
 
@@ -799,7 +917,7 @@ void RYUW122::parseTagReceive(char* response) {
         strtok(ptr, ","); // Skip payload length
         char* data = strtok(nullptr, ",");
         char* rssiStr = strtok(nullptr, ",\r\n");
-        int rssi = rssiStr ? atoi(rssiStr) : 0;
+        int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
         _simpleMessageCallback("ANCHOR", data ? data : "", rssi);
     }
 }
@@ -939,7 +1057,7 @@ int RYUW122::getMultipleDistances(const char** tagAddresses, int numTags, float*
         }
 
         // Small delay between measurements
-        delay(100);
+        managedDelay(100);
     }
 
     return successCount;
@@ -950,3 +1068,28 @@ bool RYUW122::begin(RYUW122BaudRate baudRate) {
     return begin();
 }
 
+// Toggle the configured reset pin: LOW for 5ms then HIGH
+void RYUW122::hardwareResetPin() const {
+    digitalWrite(this->lowResetTriggerInputPin, LOW);
+    managedDelay(5);
+    digitalWrite(this->lowResetTriggerInputPin, HIGH);
+    managedDelay(5);
+}
+
+// Implement timeout setters/getters
+void RYUW122::setCommandTimeout(unsigned long ms) {
+    this->_commandTimeoutMs = ms;
+}
+
+unsigned long RYUW122::getCommandTimeout() const {
+    return this->_commandTimeoutMs;
+}
+
+void RYUW122::setStreamTimeout(unsigned long ms) {
+    this->_streamTimeoutMs = ms;
+    if (this->serialDef.stream) this->serialDef.stream->setTimeout(ms);
+}
+
+unsigned long RYUW122::getStreamTimeout() const {
+    return this->_streamTimeoutMs;
+}

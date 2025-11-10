@@ -27,12 +27,14 @@
 
 #include <RYUW122.h>
 
+#define RESET_PIN 6 // NRST active LOW
+
 // Define pins for SoftwareSerial (adjust based on your board)
 #define RX_PIN 10  // Connect to RYUW122 TX
 #define TX_PIN 11  // Connect to RYUW122 RX
 
-// Create RYUW122 instance with SoftwareSerial
-RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_115200);
+// Create RYUW122 instance
+RYUW122 uwb(TX_PIN, RX_PIN, RESET_PIN, RYUW122BaudRate::B_115200);
 
 // Configuration parameters
 const char* NETWORK_ID = "REYAX123";
@@ -59,19 +61,19 @@ const unsigned long ASYNC_INTERVAL = 3000;  // Send asynchronously every 3 secon
  * @param rssi Received Signal Strength Indication
  */
 void onAnchorReceive(const char* tagAddress, int payloadLength, const char* tagData, int distance, int rssi) {
-    Serial.println("=== ANCHOR RECEIVED (Async) ===");
-    Serial.print("From TAG: ");
+    Serial.println(F("=== ANCHOR RECEIVED (Async) ==="));
+    Serial.print(F("From TAG: "));
     Serial.println(tagAddress);
-    Serial.print("Payload Length: ");
+    Serial.print(F("Payload Length: "));
     Serial.println(payloadLength);
-    Serial.print("Data: ");
+    Serial.print(F("Data: "));
     Serial.println(tagData);
-    Serial.print("Distance: ");
+    Serial.print(F("Distance: "));
     Serial.print(distance);
-    Serial.println(" cm");
-    Serial.print("RSSI: ");
+    Serial.println(F(" cm"));
+    Serial.print(F("RSSI: "));
     Serial.println(rssi);
-    Serial.println("==============================");
+    Serial.println(F("=============================="));
 }
 
 void setup() {
@@ -81,63 +83,63 @@ void setup() {
         ; // Wait for serial port to connect (needed for native USB)
     }
 
-    Serial.println("RYUW122 ANCHOR Example");
-    Serial.println("======================");
+    Serial.println(F("RYUW122 ANCHOR Example"));
+    Serial.println(F("======================"));
 
     // Initialize the UWB module
-    Serial.println("Initializing RYUW122...");
+    Serial.println(F("Initializing RYUW122..."));
     if (!uwb.begin()) {
-        Serial.println("Failed to initialize RYUW122!");
+        Serial.println(F("Failed to initialize RYUW122!"));
         while (1) {
             delay(1000);
         }
     }
-    Serial.println("RYUW122 initialized successfully");
+    Serial.println(F("RYUW122 initialized successfully"));
 
     // Test AT command communication
-    Serial.println("Testing AT communication...");
+    Serial.println(F("Testing AT communication..."));
     if (!uwb.test()) {
-        Serial.println("AT communication test failed!");
+        Serial.println(F("AT communication test failed!"));
         while (1) {
             delay(1000);
         }
     }
-    Serial.println("AT communication OK");
+    Serial.println(F("AT communication OK"));
 
     // Configure as ANCHOR
-    Serial.println("Setting mode to ANCHOR...");
+    Serial.println(F("Setting mode to ANCHOR..."));
     if (!uwb.setMode(RYUW122Mode::ANCHOR)) {
-        Serial.println("Failed to set ANCHOR mode!");
+        Serial.println(F("Failed to set ANCHOR mode!"));
         while (1) {
             delay(1000);
         }
     }
-    Serial.println("ANCHOR mode set");
+    Serial.println(F("ANCHOR mode set"));
 
     // Set Network ID
-    Serial.print("Setting Network ID to: ");
+    Serial.print(F("Setting Network ID to: "));
     Serial.println(NETWORK_ID);
     if (!uwb.setNetworkId(NETWORK_ID)) {
-        Serial.println("Failed to set Network ID!");
+        Serial.println(F("Failed to set Network ID!"));
     }
 
     // Set ANCHOR address
-    Serial.print("Setting ANCHOR address to: ");
+    Serial.print(F("Setting ANCHOR address to: "));
     Serial.println(ANCHOR_ADDRESS);
     if (!uwb.setAddress(ANCHOR_ADDRESS)) {
-        Serial.println("Failed to set address!");
+        Serial.println(F("Failed to set address!"));
     }
 
     // Set encryption password
-    Serial.println("Setting encryption password...");
+    Serial.println(F("Setting encryption password..."));
     if (!uwb.setPassword(PASSWORD)) {
-        Serial.println("Failed to set password!");
+        Serial.println(F("Failed to set password!"));
     }
 
     // Enable RSSI display
-    Serial.println("Enabling RSSI display...");
+    Serial.println(F("Enabling RSSI display..."));
     if (!uwb.setRssiDisplay(RYUW122RSSI::ENABLE)) {
-        Serial.println("Failed to enable RSSI!");
+        Serial.println(F("Failed to enable RSSI!"));
     }
 
     // Register callback for asynchronous receives
@@ -146,14 +148,14 @@ void setup() {
     // Display firmware version
     char version[32];
     if (uwb.getFirmwareVersion(version)) {
-        Serial.print("Firmware Version: ");
+        Serial.print(F("Firmware Version: "));
         Serial.println(version);
     }
 
-    Serial.println("\n======================");
-    Serial.println("Setup complete!");
-    Serial.println("Waiting for TAG responses...");
-    Serial.println("======================\n");
+    Serial.println(F("\n======================"));
+    Serial.println(F("Setup complete!"));
+    Serial.println(F("Waiting for TAG responses..."));
+    Serial.println(F("======================\n"));
 
     delay(1000);
 }
@@ -168,16 +170,16 @@ void loop() {
     if (currentTime - lastSyncSend >= SYNC_INTERVAL) {
         lastSyncSend = currentTime;
 
-        Serial.println("\n--- Synchronous Send Example ---");
+        Serial.println(F("\n--- Synchronous Send Example ---"));
 
         const char* sendData = "SYNC";
         char responseData[RYUW122_MAX_PAYLOAD_LENGTH + 1];
         int distance = 0;
         int rssi = 0;
 
-        Serial.print("Sending '");
+        Serial.print(F("Sending '"));
         Serial.print(sendData);
-        Serial.print("' to TAG ");
+        Serial.print(F("' to TAG "));
         Serial.println(TAG_ADDRESS);
 
         // This call blocks until response is received or timeout occurs
@@ -192,17 +194,17 @@ void loop() {
         );
 
         if (success) {
-            Serial.println("=== ANCHOR RECEIVED (Sync) ===");
-            Serial.print("Response Data: ");
+            Serial.println(F("=== ANCHOR RECEIVED (Sync) ==="));
+            Serial.print(F("Response Data: "));
             Serial.println(responseData);
-            Serial.print("Distance: ");
+            Serial.print(F("Distance: "));
             Serial.print(distance);
-            Serial.println(" cm");
-            Serial.print("RSSI: ");
+            Serial.println(F(" cm"));
+            Serial.print(F("RSSI: "));
             Serial.println(rssi);
-            Serial.println("==============================");
+            Serial.println(F("=============================="));
         } else {
-            Serial.println("Synchronous send failed or timeout!");
+            Serial.println(F("Synchronous send failed or timeout!"));
         }
     }
 
@@ -210,13 +212,13 @@ void loop() {
     if (currentTime - lastAsyncSend >= ASYNC_INTERVAL) {
         lastAsyncSend = currentTime;
 
-        Serial.println("\n--- Asynchronous Send Example ---");
+        Serial.println(F("\n--- Asynchronous Send Example ---"));
 
         const char* sendData = "ASYNC";
 
-        Serial.print("Sending '");
+        Serial.print(F("Sending '"));
         Serial.print(sendData);
-        Serial.print("' to TAG ");
+        Serial.print(F("' to TAG "));
         Serial.println(TAG_ADDRESS);
 
         // This call returns immediately after sending the command
@@ -228,9 +230,9 @@ void loop() {
         );
 
         if (success) {
-            Serial.println("Command sent successfully (response via callback)");
+            Serial.println(F("Command sent successfully (response via callback)"));
         } else {
-            Serial.println("Asynchronous send failed!");
+            Serial.println(F("Asynchronous send failed!"));
         }
     }
 

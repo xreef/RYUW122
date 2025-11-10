@@ -24,8 +24,10 @@
 
 #include <RYUW122.h>
 
+#define RESET_PIN 6 // NRST active LOW
+
 // Create UWB instance
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200); // TX=11, RX=10
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200); // TX=11, RX=10
 
 // Configuration
 const char* TARGET_TAG = "TAG00001";
@@ -40,26 +42,26 @@ void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    Serial.println("\n=== RYUW122 Simple Distance Measurement ===");
+    Serial.println(F("\n=== RYUW122 Simple Distance Measurement ==="));
 
     // Initialize module
-    Serial.println("Initializing...");
+    Serial.println(F("Initializing..."));
     if (!uwb.begin()) {
-        Serial.println("ERROR: Failed to initialize!");
+        Serial.println(F("ERROR: Failed to initialize!"));
         while(1);
     }
 
     // Configure as ANCHOR
-    Serial.println("Configuring as ANCHOR...");
+    Serial.println(F("Configuring as ANCHOR..."));
     uwb.setMode(RYUW122Mode::ANCHOR);
     uwb.setNetworkId(NETWORK_ID);
     uwb.setAddress(ANCHOR_ADDR);
     uwb.setRssiDisplay(RYUW122RSSI::ENABLE);
 
-    Serial.println("\n=== Ready to measure distance ===");
-    Serial.print("Target TAG: ");
+    Serial.println(F("\n=== Ready to measure distance ==="));
+    Serial.print(F("Target TAG: "));
     Serial.println(TARGET_TAG);
-    Serial.println("Measuring distance every 1 second...\n");
+    Serial.println(F("Measuring distance every 1 second...\n"));
 }
 
 void loop() {
@@ -68,36 +70,35 @@ void loop() {
     if (currentTime - lastMeasurement >= MEASURE_INTERVAL) {
         lastMeasurement = currentTime;
 
-        Serial.print("Measuring distance... ");
+        Serial.print(F("Measuring distance... "));
 
         // Simplified API - just get the distance!
         float distanceCm = uwb.getDistanceFrom(TARGET_TAG);
 
         if (distanceCm >= 0) {
             // Success - display in multiple units
-            Serial.print("Distance: ");
+            Serial.print(F("Distance: "));
             Serial.print(distanceCm);
-            Serial.print(" cm");
+            Serial.print(F(" cm"));
 
             // You can also get it in other units directly:
             float distanceInches = uwb.getDistanceFrom(TARGET_TAG, MeasureUnit::INCHES);
             if (distanceInches >= 0) {
-                Serial.print(" (");
+                Serial.print(F(" ("));
                 Serial.print(distanceInches, 1);
-                Serial.print(" inches)");
+                Serial.print(F(" inches)"));
             }
 
             float distanceMeters = uwb.getDistanceFrom(TARGET_TAG, MeasureUnit::METERS);
             if (distanceMeters >= 0) {
-                Serial.print(" (");
+                Serial.print(F(" ("));
                 Serial.print(distanceMeters, 2);
-                Serial.print(" m)");
+                Serial.print(F(" m)"));
             }
 
             Serial.println();
         } else {
-            Serial.println("FAILED - TAG not responding");
+            Serial.println(F("FAILED - TAG not responding"));
         }
     }
 }
-

@@ -15,29 +15,32 @@
 
 #include <RYUW122.h>
 
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200);
+#define RESET_PIN 6 // NRST active LOW
+
+// Create RYUW122 instance with SoftwareSerial
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200);
 
 const char* NETWORK_ID = "REYAX123";
 const char* TAG_ADDRESS = "TAG00001";
 
 // Optional: TAG receive callback (uncomment if you want to log incoming commands)
 // void onTagReceive(int payloadLength, const char* data, int rssi) {
-//     Serial.print("TAG received: "); Serial.println(data);
+//     Serial.print(F("TAG received: ")); Serial.println(data);
 // }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    Serial.println("\n=== RYUW122 Basic Test TAG ===");
+    Serial.println(F("\n=== RYUW122 Basic Test TAG ==="));
 
     if (!uwb.begin()) {
-        Serial.println("Failed to init UWB");
+        Serial.println(F("Failed to init UWB"));
         while(1);
     }
 
     if (!uwb.test()) {
-        Serial.println("Module not responding to AT");
+        Serial.println(F("Module not responding to AT"));
         while(1);
     }
 
@@ -50,7 +53,7 @@ void setup() {
     // Register tag receive callback (disabled by default)
     // uwb.onTagReceive(onTagReceive);
 
-    Serial.println("TAG ready");
+    Serial.println(F("TAG ready"));
 }
 
 void loop() {
@@ -61,10 +64,9 @@ void loop() {
         last = millis();
         char buf[RYUW122_MAX_PAYLOAD_LENGTH + 1];
         snprintf(buf, sizeof(buf), "B%03d", n++);
-        Serial.print("Store test message: "); Serial.println(buf);
+        Serial.print(F("Store test message: ")); Serial.println(buf);
         bool ok = uwb.sendMessageFromTag(buf);
-        if (!ok) Serial.println("Store failed");
+        if (!ok) Serial.println(F("Store failed"));
     }
     uwb.processMessages();
 }
-

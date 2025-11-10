@@ -24,13 +24,10 @@
 
 #include <RYUW122.h>
 
-// ========================================
-// CONFIGURATION - CHANGE THIS
-// ========================================
-#define MODULE_MODE_ANCHOR  // Comment out for TAG mode
+#define RESET_PIN 6 // NRST active LOW
 
 // Create UWB instance
-RYUW122 uwb(11, 10, RYUW122BaudRate::B_115200);
+RYUW122 uwb(11, 10, RESET_PIN, RYUW122BaudRate::B_115200);
 
 // Network configuration
 const char* NETWORK_ID = "REYAX123";
@@ -60,17 +57,17 @@ int messageCount = 0;
  */
 void onMessageReceived(const char* fromAddress, const char* message, int rssi) {
     Serial.println();
-    Serial.println("┌─────────────────────────────┐");
-    Serial.println("│     NEW MESSAGE RECEIVED    │");
-    Serial.println("└─────────────────────────────┘");
-    Serial.print("From: ");
+    Serial.println(F("┌─────────────────────────────┐"));
+    Serial.println(F("│     NEW MESSAGE RECEIVED    │"));
+    Serial.println(F("└─────────────────────────────┘"));
+    Serial.print(F("From: "));
     Serial.println(fromAddress);
-    Serial.print("Message: \"");
+    Serial.print(F("Message: \""));
     Serial.print(message);
-    Serial.println("\"");
-    Serial.print("Signal Strength (RSSI): ");
+    Serial.println(F("\""));
+    Serial.print(F("Signal Strength (RSSI): "));
     Serial.println(rssi);
-    Serial.println("─────────────────────────────");
+    Serial.println(F("─────────────────────────────"));
     Serial.println();
 }
 
@@ -78,21 +75,21 @@ void onMessageReceived(const char* fromAddress, const char* message, int rssi) {
  * @brief Called when distance is measured (ANCHOR only)
  */
 void onDistanceMeasured(const char* fromAddress, float distance, MeasureUnit unit, int rssi) {
-    Serial.print("📏 Distance to ");
+    Serial.print(F("📏 Distance to "));
     Serial.print(fromAddress);
-    Serial.print(": ");
+    Serial.print(F(": "));
     Serial.print(distance, 1);
 
     switch(unit) {
-        case MeasureUnit::CENTIMETERS: Serial.print(" cm"); break;
-        case MeasureUnit::INCHES: Serial.print(" inches"); break;
-        case MeasureUnit::METERS: Serial.print(" m"); break;
-        case MeasureUnit::FEET: Serial.print(" ft"); break;
+        case MeasureUnit::CENTIMETERS: Serial.print(F(" cm")); break;
+        case MeasureUnit::INCHES: Serial.print(F(" inches")); break;
+        case MeasureUnit::METERS: Serial.print(F(" m")); break;
+        case MeasureUnit::FEET: Serial.print(F(" ft")); break;
     }
 
-    Serial.print(" (RSSI: ");
+    Serial.print(F(" (RSSI: "));
     Serial.print(rssi);
-    Serial.println(")");
+    Serial.println(F(")"));
 }
 
 // ========================================
@@ -103,26 +100,26 @@ void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    Serial.println("\n");
-    Serial.println("================================================");
-    Serial.println("     RYUW122 Simple Messaging Example");
-    Serial.println("================================================");
+    Serial.println(F("\n"));
+    Serial.println(F("================================================"));
+    Serial.println(F("     RYUW122 Simple Messaging Example"));
+    Serial.println(F("================================================"));
     Serial.println();
 
     // Initialize
-    Serial.println("Initializing UWB module...");
+    Serial.println(F("Initializing UWB module..."));
     if (!uwb.begin()) {
-        Serial.println("ERROR: Failed to initialize!");
+        Serial.println(F("ERROR: Failed to initialize!"));
         while(1) delay(1000);
     }
-    Serial.println("✓ Module initialized");
+    Serial.println(F("✓ Module initialized"));
 
     // Configure mode
 #ifdef MODULE_MODE_ANCHOR
-    Serial.println("Configuring as ANCHOR...");
+    Serial.println(F("Configuring as ANCHOR..."));
     uwb.setMode(RYUW122Mode::ANCHOR);
 #else
-    Serial.println("Configuring as TAG...");
+    Serial.println(F("Configuring as TAG..."));
     uwb.setMode(RYUW122Mode::TAG);
 #endif
 
@@ -130,9 +127,9 @@ void setup() {
     uwb.setAddress(MY_ADDRESS);
     uwb.setRssiDisplay(RYUW122RSSI::ENABLE);
 
-    Serial.print("✓ My address: ");
+    Serial.print(F("✓ My address: "));
     Serial.println(MY_ADDRESS);
-    Serial.print("✓ Target address: ");
+    Serial.print(F("✓ Target address: "));
     Serial.println(TARGET_ADDRESS);
     Serial.println();
 
@@ -141,15 +138,15 @@ void setup() {
 
 #ifdef MODULE_MODE_ANCHOR
     uwb.onDistanceMeasured(onDistanceMeasured, MeasureUnit::CENTIMETERS);
-    Serial.println("✓ Callbacks registered (message + distance)");
+    Serial.println(F("✓ Callbacks registered (message + distance)"));
 #else
-    Serial.println("✓ Message callback registered");
+    Serial.println(F("✓ Message callback registered"));
 #endif
 
     Serial.println();
-    Serial.println("================================================");
-    Serial.println("System ready! Starting communication...");
-    Serial.println("================================================");
+    Serial.println(F("================================================"));
+    Serial.println(F("System ready! Starting communication..."));
+    Serial.println(F("================================================"));
     Serial.println();
 
     delay(2000);
@@ -176,9 +173,9 @@ void loop() {
 #ifdef MODULE_MODE_ANCHOR
         snprintf(message, sizeof(message), "ANC%04d", messageCount);
 
-        Serial.print("📤 Sending to TAG: \"");
+        Serial.print(F("📤 Sending to TAG: \""));
         Serial.print(message);
-        Serial.println("\"");
+        Serial.println(F("\""));
 
         // Simplified send - just one line!
         bool success = uwb.sendMessageToTag(TARGET_ADDRESS, message);
@@ -186,21 +183,20 @@ void loop() {
 #else
         snprintf(message, sizeof(message), "TAG%04d", messageCount);
 
-        Serial.print("📤 Sending from TAG: \"");
+        Serial.print(F("📤 Sending from TAG: \""));
         Serial.print(message);
-        Serial.println("\"");
+        Serial.println(F("\""));
 
         // TAG simplified send
         bool success = uwb.sendMessageFromTag(message);
 #endif
 
         if (success) {
-            Serial.println("✓ Message sent successfully");
+            Serial.println(F("✓ Message sent successfully"));
         } else {
-            Serial.println("✗ Failed to send message");
+            Serial.println(F("✗ Failed to send message"));
         }
 
         Serial.println();
     }
 }
-
