@@ -2,7 +2,7 @@
  * @file anchor_esp32_position_oled.cpp
  * @author Renzo Mischianti (modified)
  * @brief RYUW122 MASTER ANCHOR (mobile) example for ESP32 with OLED display
- * @version 1.1.0
+ * @version 1.0.0
  * @date 2025-11-24
  *
  * This sketch configures the esp32 as a MASTER/ANCHOR (mobile) that sequentially

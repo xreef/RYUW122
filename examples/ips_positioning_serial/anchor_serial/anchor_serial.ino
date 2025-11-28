@@ -2,7 +2,7 @@
  * @file anchor_serial.cpp
  * @author Renzo Mischianti
  * @brief RYUW122 MASTER ANCHOR
- * @version 1.1.1
+ * @version 1.0.0
  * @date 2025-11-28
  *
  * This sketch configures the MCU as a MASTER/ANCHOR (mobile) that sequentially
