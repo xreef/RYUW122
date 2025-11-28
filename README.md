@@ -1,6 +1,6 @@
 # RYUW122 UWB Library
 
-![RYUW122 Logo](https://raw.githubusercontent.com/xreef/RYUW122/refs/heads/master/resources/RYUW122_library_logo.jpg)
+![RYUW122 Logo](https://raw.githubusercontent.com/xreef/RYUW122/refs/heads/master/resources/RYUW122_library_logo.png)
 
 [![arduino-library-badge](https://www.ardu-badge.com/badge/RYUW122.svg?)](https://www.ardu-badge.com/RYUW122)
 [![](https://img.shields.io/badge/Platform-Arduino%20%7C%20ArduinoSAMD%20%7C%20ESP32%20%7C%20ESP8266%20%7C%20RP2040%20%7C%20STM32-green.svg)]()
