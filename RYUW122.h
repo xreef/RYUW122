@@ -29,7 +29,7 @@
 
 // Uncomment to enable printing out nice debug messages.
 // Note: debug logging consumes RAM and may cause instability on UNO; disabled by default.
-#define RYUW122_DEBUG
+// #define RYUW122_DEBUG
 
 // Define where debug output will be printed.
 #define DEBUG_PRINTER Serial
