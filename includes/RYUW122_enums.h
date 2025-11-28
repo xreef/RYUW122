@@ -14,16 +14,18 @@
 enum class RYUW122Mode {
     TAG = 0,    ///< TAG mode
     ANCHOR = 1, ///< ANCHOR mode
-    SLEEP = 2   ///< Sleep mode
+    SLEEP = 2,   ///< Sleep mode
+    UNKNOWN = -1 ///< Unknown mode
 };
 
 /**
  * @brief Defines the UART baud rates for communication with the RYUW122 module.
  */
-enum class RYUW122BaudRate : uint32_t {
-    B_9600 = 9600u,     ///< 9600 bps
-    B_57600 = 57600u,   ///< 57600 bps
-    B_115200 = 115200u  ///< 115200 bps
+enum class RYUW122BaudRate : int32_t {
+    B_9600 = 9600,     ///< 9600 bps
+    B_57600 = 57600,   ///< 57600 bps
+    B_115200 = 115200,  ///< 115200 bps
+    UNKNOWN = -1      ///< Unknown baud rate
 };
 
 /**
@@ -31,7 +33,8 @@ enum class RYUW122BaudRate : uint32_t {
  */
 enum class RYUW122RFChannel {
     CH_5 = 5, ///< 6489.6MHz
-    CH_9 = 9  ///< 7987.2 MHz
+    CH_9 = 9,  ///< 7987.2 MHz
+    UNKNOWN = -1 ///< Unknown channel
 };
 
 /**
@@ -39,7 +42,8 @@ enum class RYUW122RFChannel {
  */
 enum class RYUW122Bandwidth {
     BW_850K = 0, ///< 850 Kbps
-    BW_6_8M = 1  ///< 6.8 Mbps
+    BW_6_8M = 1,  ///< 6.8 Mbps
+    UNKNOWN = -1 ///< Unknown bandwidth
 };
 
 /**
@@ -51,7 +55,8 @@ enum class RYUW122RFPower {
     N45dBm = 2, ///< -45dBm
     N40dBm = 3, ///< -40dBm
     N35dBm = 4, ///< -35dBm
-    N32dBm = 5  ///< -32dBm
+    N32dBm = 5,  ///< -32dBm
+    UNKNOWN = -1 ///< Unknown power
 };
 
 /**
@@ -59,7 +64,8 @@ enum class RYUW122RFPower {
  */
 enum class RYUW122RSSI {
     DISABLE = 0, ///< Disable RSSI display
-    ENABLE = 1   ///< Enable RSSI display
+    ENABLE = 1,   ///< Enable RSSI display
+    UNKNOWN = -1 ///< Unknown setting
 };
 
 /**
@@ -70,7 +76,8 @@ enum class RYUW122ErrorCode {
     INVALID_COMMAND_HEADER   = 2, ///< Command does not start with "AT"
     PARAMETER_FAILURE        = 3, ///< Parameter failure
     COMMAND_FAILURE          = 4, ///< Command failure
-    UNKNOWN_COMMAND          = 5  ///< Unknown command
+    UNKNOWN_COMMAND          = 5,  ///< Unknown command
+    UNKNOWN = -1
 };
 
 /**
@@ -127,7 +134,7 @@ static inline String RYUW122BaudRate_description(RYUW122BaudRate br) {
     }
 }
 
-static inline String RYUW122BaudRate_descriptionFromValue(uint32_t val) {
+static inline String RYUW122BaudRate_descriptionFromValue(int32_t val) {
     switch (val) {
         case 9600: return String(F("9600 bps"));
         case 57600: return String(F("57600 bps"));

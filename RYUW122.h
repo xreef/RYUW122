@@ -54,6 +54,32 @@ enum class MeasureUnit {
     FEET
 };
 
+// -----------------------------------------
+// Structures for returning complex data
+// -----------------------------------------
+
+/**
+ * @struct AnchorResponse
+ * @brief Holds the complete response from an anchor-to-tag communication.
+ */
+struct AnchorResponse {
+    bool success;
+    char responseData[RYUW122_MAX_PAYLOAD_LENGTH + 1];
+    int distance;
+    int rssi;
+};
+
+/**
+ * @struct TagDutyCycleResponse
+ * @brief Holds the RF duty cycle parameters for a TAG.
+ */
+struct TagDutyCycleResponse {
+    bool success;
+    int rfEnableTime;
+    int rfDisableTime;
+};
+
+
 // Callback function types
 typedef void (*AnchorReceiveCallback)(const char* tagAddress, int payloadLength, const char* tagData, int distance, int rssi);
 typedef void (*TagReceiveCallback)(int payloadLength, const char* data, int rssi);
@@ -73,9 +99,9 @@ public:
     RYUW122(HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
 
 #ifdef HARDWARE_SERIAL_SELECTABLE_PIN
-    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, RYUW122BaudRate bpsRate);
-    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate);
-    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
+    RYUW122(byte mcuTxPin, byte mcuRxPin, HardwareSerial* serial, byte lowResetTriggerInputPin, byte nodeIndicatorPin, RYUW122BaudRate bpsRate = RYUW122BaudRate::B_115200);
 #endif
 
 #ifdef ACTIVATE_SOFTWARE_SERIAL
@@ -227,6 +253,12 @@ public:
     bool getTagRfDutyCycle(int& rfEnableTime, int& rfDisableTime);
 
     /**
+     * @brief Gets the current RF duty cycle for the TAG and returns it in a struct.
+     * @return A TagDutyCycleResponse struct containing the success status and values.
+     */
+    TagDutyCycleResponse getTagRfDutyCycle();
+
+    /**
      * @brief Sets the RF output power.
      * @param power The desired RF output power.
      * @return True if the power was set successfully, false otherwise.
@@ -262,6 +294,16 @@ public:
      * @note The payload difference between Anchor and TAG cannot exceed 3 bytes for accurate distance calculation.
      */
     bool anchorSendDataSync(const char* tagAddress, int payloadLength, const char* data, char* responseData, int* distance = nullptr, int* rssi = nullptr, unsigned long timeout = 2000);
+
+    /**
+     * @brief Sends data from an ANCHOR to a TAG and waits for a response, returned in a struct.
+     * @param tagAddress The address of the target TAG (must be 8 bytes ASCII).
+     * @param payloadLength The length of the data to send (0-12 bytes).
+     * @param data The data to send.
+     * @param timeout Timeout in milliseconds (default 2000ms).
+     * @return An AnchorResponse struct containing success status, response data, distance, and RSSI.
+     */
+    AnchorResponse anchorSendDataSync(const char* tagAddress, int payloadLength, const char* data, unsigned long timeout = 2000);
 
     /**
      * @brief Sends data from a TAG.
@@ -472,7 +514,7 @@ private:
         }
 
         template< typename T >
-        void begin( T &t, uint32_t baud, uint32_t config, int8_t mcuTxPin, int8_t mcuRxPin ) {
+        void begin( T &t, uint32_t baud, uint32_t config, int8_t mcuRxPin, int8_t mcuTxPin ) {
             DEBUG_PRINTLN(F("Begin "));
             DEBUG_PRINT(F("MC TX: "));
             DEBUG_PRINT(mcuTxPin);
@@ -480,7 +522,7 @@ private:
             DEBUG_PRINT(mcuRxPin);
 
             t.setTimeout(500);
-            t.begin(baud, config, mcuTxPin, mcuRxPin);
+            t.begin(baud, config, mcuRxPin, mcuTxPin);
             stream = &t;
         }
 #endif

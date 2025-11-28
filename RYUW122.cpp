@@ -246,7 +246,7 @@ bool RYUW122::begin(){
 #ifdef HARDWARE_SERIAL_SELECTABLE_PIN
         if(this->mcuTxPin != -1 && this->mcuRxPin != -1) {
             DEBUG_PRINTLN(F("Hardware Serial with custom TX/RX pins"));
-            this->serialDef.begin(*this->hs, (uint32_t)this->bpsRate, this->serialConfig, this->mcuTxPin, this->mcuRxPin);
+            this->serialDef.begin(*this->hs, (uint32_t)this->bpsRate, this->serialConfig, this->mcuRxPin, this->mcuTxPin);
         }else{
             this->serialDef.begin(*this->hs, (uint32_t)this->bpsRate, this->serialConfig);
         }
@@ -392,10 +392,16 @@ RYUW122Mode RYUW122::getMode() {
     char response[64];
     if (sendCommandAndGetResponse(F("AT+MODE?"), response, sizeof(response))) {
         if (strstr_P(response, PSTR("+MODE=")) != nullptr) {
-            return (RYUW122Mode)safeAtoi(response + 6, (int)RYUW122Mode::TAG);
+            int modeVal = safeAtoi(response + 6, -1);
+            switch(modeVal) {
+                case 0: return RYUW122Mode::TAG;
+                case 1: return RYUW122Mode::ANCHOR;
+                case 2: return RYUW122Mode::SLEEP;
+                default: return RYUW122Mode::UNKNOWN;
+            }
         }
     }
-    return RYUW122Mode::TAG; // Default value
+    return RYUW122Mode::UNKNOWN;
 }
 
 bool RYUW122::setBaudRate(RYUW122BaudRate baudRate) {
@@ -410,10 +416,16 @@ RYUW122BaudRate RYUW122::getBaudRate() {
     char response[64];
     if (sendCommandAndGetResponse(F("AT+IPR?"), response, sizeof(response))) {
         if (strstr_P(response, PSTR("+IPR=")) != nullptr) {
-            return (RYUW122BaudRate)safeAtoi(response + 5, (int)RYUW122BaudRate::B_115200);
+            long baud = strtol(response + 5, nullptr, 10);
+            switch(baud) {
+                case 9600: return RYUW122BaudRate::B_9600;
+                case 57600: return RYUW122BaudRate::B_57600;
+                case 115200: return RYUW122BaudRate::B_115200;
+                default: return RYUW122BaudRate::UNKNOWN;
+            }
         }
     }
-    return RYUW122BaudRate::B_115200; // Default value
+    return RYUW122BaudRate::UNKNOWN;
 }
 
 bool RYUW122::setRfChannel(RYUW122RFChannel channel) {
@@ -428,10 +440,15 @@ RYUW122RFChannel RYUW122::getRfChannel() {
     char response[64];
     if (sendCommandAndGetResponse(F("AT+CHANNEL?"), response, sizeof(response))) {
         if (strstr_P(response, PSTR("+CHANNEL=")) != nullptr) {
-            return (RYUW122RFChannel)safeAtoi(response + 9, (int)RYUW122RFChannel::CH_5);
+            int channelVal = safeAtoi(response + 9, -1);
+            switch(channelVal) {
+                case 5: return RYUW122RFChannel::CH_5;
+                case 9: return RYUW122RFChannel::CH_9;
+                default: return RYUW122RFChannel::UNKNOWN;
+            }
         }
     }
-    return RYUW122RFChannel::CH_5; // Default value
+    return RYUW122RFChannel::UNKNOWN;
 }
 
 bool RYUW122::setBandwidth(RYUW122Bandwidth bandwidth) {
@@ -446,10 +463,15 @@ RYUW122Bandwidth RYUW122::getBandwidth() {
     char response[64];
     if (sendCommandAndGetResponse(F("AT+BANDWIDTH?"), response, sizeof(response))) {
         if (strstr_P(response, PSTR("+BANDWIDTH=")) != nullptr) {
-            return (RYUW122Bandwidth)safeAtoi(response + 11, (int)RYUW122Bandwidth::BW_850K);
+            int bwVal = safeAtoi(response + 11, -1);
+            switch(bwVal) {
+                case 0: return RYUW122Bandwidth::BW_850K;
+                case 1: return RYUW122Bandwidth::BW_6_8M;
+                default: return RYUW122Bandwidth::UNKNOWN;
+            }
         }
     }
-    return RYUW122Bandwidth::BW_850K; // Default value
+    return RYUW122Bandwidth::UNKNOWN;
 }
 
 bool RYUW122::setNetworkId(const char* networkId) {
@@ -556,10 +578,19 @@ RYUW122RFPower RYUW122::getRfPower() {
     char response[64];
     if (sendCommandAndGetResponse(F("AT+CRFOP?"), response, sizeof(response))) {
         if (strstr_P(response, PSTR("+CRFOP=")) != nullptr) {
-            return (RYUW122RFPower)safeAtoi(response + 7, (int)RYUW122RFPower::N32dBm);
+            int powerVal = safeAtoi(response + 7, -1);
+            switch(powerVal) {
+                case 0: return RYUW122RFPower::N65dBm;
+                case 1: return RYUW122RFPower::N50dBm;
+                case 2: return RYUW122RFPower::N45dBm;
+                case 3: return RYUW122RFPower::N40dBm;
+                case 4: return RYUW122RFPower::N35dBm;
+                case 5: return RYUW122RFPower::N32dBm;
+                default: return RYUW122RFPower::UNKNOWN;
+            }
         }
     }
-    return RYUW122RFPower::N32dBm; // Default value
+    return RYUW122RFPower::UNKNOWN;
 }
 
 bool RYUW122::anchorSendData(const char* tagAddress, int payloadLength, const char* data) {
@@ -640,6 +671,50 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
     return receivedOk && receivedData;
 }
 
+// bool RYUW122::tagSendData(int payloadLength, const char* data) {
+//     // Validate parameters
+//     if (payloadLength < 0 || payloadLength > RYUW122_MAX_PAYLOAD_LENGTH) {
+//         DEBUG_PRINTLN(F("Error: Invalid payload length"));
+//         return false;
+//     }
+//     if (!data && payloadLength > 0) {
+//         DEBUG_PRINTLN(F("Error: Data is null"));
+//         return false;
+//     }
+//     if (!this->serialDef.stream) return false;
+//
+//     // Clear any pending data
+//     while (this->serialDef.stream->available()) {
+//         (void)this->serialDef.stream->read();
+//     }
+//
+//     // Build and send command using write() for binary-safe transmission
+//     DEBUG_PRINT(F("AT> AT+TAG_SEND="));
+//     DEBUG_PRINT(payloadLength);
+//     DEBUG_PRINT(F(","));
+//     DEBUG_PRINTLN(data);
+//
+//     this->serialDef.stream->print("AT+TAG_SEND=");
+//     this->serialDef.stream->print(payloadLength);
+//     this->serialDef.stream->print(",");
+//     // Use write() to send exact bytes, not snprintf which stops at null terminators
+//     this->serialDef.stream->write((const uint8_t*)data, payloadLength);
+//     this->serialDef.stream->print("\r\n");
+//
+//     if (isSoftwareSerial) managedDelay(10);
+//
+//     // Wait for +OK response
+//     char response[64];
+//     if (readLine(*this->serialDef.stream, response, sizeof(response), this->_commandTimeoutMs)) {
+//         DEBUG_PRINT(F("AT< "));
+//         DEBUG_PRINTLN(response);
+//         return strncmp(response, "+OK", 3) == 0;
+//     }
+//
+//     DEBUG_PRINTLN(F("AT< <no response>"));
+//     return false;
+// }
+
 bool RYUW122::tagSendData(int payloadLength, const char* data) {
     char command[64];
     snprintf_P(command, sizeof(command), PSTR("AT+TAG_SEND=%d,%s"), payloadLength, data);
@@ -700,10 +775,15 @@ RYUW122RSSI RYUW122::getRssiDisplay() {
     char response[64];
     if (sendCommandAndGetResponse(F("AT+RSSI?"), response, sizeof(response))) {
         if (strstr_P(response, PSTR("+RSSI=")) != nullptr) {
-            return (RYUW122RSSI)safeAtoi(response + 6, (int)RYUW122RSSI::DISABLE);
+            int rssiVal = safeAtoi(response + 6, -1);
+            switch(rssiVal) {
+                case 0: return RYUW122RSSI::DISABLE;
+                case 1: return RYUW122RSSI::ENABLE;
+                default: return RYUW122RSSI::UNKNOWN;
+            }
         }
     }
-    return RYUW122RSSI::DISABLE; // Default value
+    return RYUW122RSSI::UNKNOWN;
 }
 
 bool RYUW122::setDistanceCalibration(int calibrationValue) {
