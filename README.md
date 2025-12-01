@@ -1,8 +1,9 @@
-# RYUW122 UWB Library
+# RYUW122 UWB Library v1.0.1
 
 ![RYUW122 Logo](https://raw.githubusercontent.com/xreef/RYUW122/refs/heads/master/resources/RYUW122_library_logo.png)
 
 [![arduino-library-badge](https://www.ardu-badge.com/badge/RYUW122.svg?)](https://www.ardu-badge.com/RYUW122)
+
 [![](https://img.shields.io/badge/Platform-Arduino%20%7C%20ArduinoSAMD%20%7C%20ESP32%20%7C%20ESP8266%20%7C%20RP2040%20%7C%20STM32-green.svg)]()
 [![](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE.md)
 
@@ -105,7 +106,7 @@ This example shows how to set up an Anchor and read the distance from a Tag.
 #define RESET_PIN 4
 
 // Initialize: TX_PIN, RX_PIN, Serial Interface, Reset Pin
-RYUW122 ryuw122(TX_PIN, RX_PIN, &Serial2, RESET_PIN);
+RYUW122 uwb(TX_PIN, RX_PIN, &Serial2, RESET_PIN);
 
 const char* TAG_ADDRESS = "T1T1T1T1"; // Address of the target Tag
 
@@ -113,20 +114,20 @@ void setup() {
   Serial.begin(115200);
   
   // Start the module
-  if (!ryuw122.begin()) {
+  if (!uwb.begin()) {
     Serial.println("Initialization failed!");
     while(1);
   }
 
   // Set as Anchor
-  ryuw122.setMode(RYUW122Mode::ANCHOR);
-  ryuw122.setNetworkId("AABBCCDD");
-  ryuw122.setAddress("ANCHOR01");
+  uwb.setMode(RYUW122Mode::ANCHOR);
+  uwb.setNetworkId("AABBCCDD");
+  uwb.setAddress("ANCHOR01");
 }
 
 void loop() {
   // Get distance in Meters
-  float distance = ryuw122.getDistanceFrom(TAG_ADDRESS, MeasureUnit::METERS);
+  float distance = uwb.getDistanceFrom(TAG_ADDRESS, MeasureUnit::METERS);
 
   if (distance >= 0) {
     Serial.print("Distance to Tag: ");
@@ -149,7 +150,7 @@ This example sets up a Tag that listens for messages.
 
 // Arduino Uno Wiring with SoftwareSerial
 // RYUW122 TX -> Pin 10, RYUW122 RX -> Pin 11
-RYUW122 ryuw122(11, 10, RYUW122BaudRate::B_9600);
+RYUW122 uwb(11, 10, RYUW122BaudRate::B_9600);
 
 void onMessageReceived(const char* fromAddress, const char* message, int rssi) {
   Serial.print("Message from: "); Serial.println(fromAddress);
@@ -160,22 +161,22 @@ void onMessageReceived(const char* fromAddress, const char* message, int rssi) {
 void setup() {
   Serial.begin(115200);
   
-  if (!ryuw122.begin()) {
+  if (!uwb.begin()) {
     Serial.println("Init failed!");
     while(1);
   }
 
-  ryuw122.setMode(RYUW122Mode::TAG);
-  ryuw122.setNetworkId("AABBCCDD");
-  ryuw122.setAddress("T1T1T1T1");
+  uwb.setMode(RYUW122Mode::TAG);
+  uwb.setNetworkId("AABBCCDD");
+  uwb.setAddress("T1T1T1T1");
 
   // Register callback
-  ryuw122.onMessageReceived(onMessageReceived);
+  uwb.onMessageReceived(onMessageReceived);
 }
 
 void loop() {
   // Keep the listener active
-  ryuw122.loop();
+  uwb.loop();
 }
 ```
 
@@ -288,12 +289,13 @@ String sendCommand(const char* command, unsigned long timeout = 1000);
 
 ## 📝 Changelog
 
-**v1.0.0 (2025-10-10)**
-- Initial release
-- Support for Tag and Anchor modes
-- High-level API for distance and messaging
-- Trilateration helper functions
-- Sync and Async operation modes
+ - v1.0.1 2025-12-01: Fix examples and update documentation 
+ - v1.0.0 2025-10-10):
+   - Initial release
+   - Support for Tag and Anchor modes
+   - High-level API for distance and messaging
+   - Trilateration helper functions
+   - Sync and Async operation modes
 
 ## 📄 License
 
@@ -324,3 +326,5 @@ Contributions are welcome! Please:
 - **GitHub**: @xreef
 
 Made with ❤️ by Renzo Mischianti
+
+https://downloads.arduino.cc/libraries/logs/github.com/xreef/RYUW122/

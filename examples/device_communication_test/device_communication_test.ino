@@ -19,6 +19,8 @@
  * - RYUW122 RX  -> Arduino TX (e.g., Pin 11 for SoftwareSerial)
  * - RYUW122 GND -> Arduino GND
  * - RYUW122 VCC -> Arduino 3.3V or 5V (check module specifications)
+ * For esp32 like device It's important to set also NRST
+ * - RYUW122 NRST-> ESP32 GPIO for RESET
  *
  * Open the Serial Monitor at 115200 baud to see the test results.
  */
@@ -35,14 +37,14 @@
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-// RYUW122 ryuw122(&Serial1);
+// RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 #define RX_PIN 5  // Connect to RYUW122 TX
 #define TX_PIN 4  // Connect to RYUW122 RX
 #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 
-RYUW122 ryuw122(RX_PIN, TX_PIN, &Serial1, RESET_PIN);
+RYUW122 uwb( TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 void printTestResult(const char* testName, bool result) {

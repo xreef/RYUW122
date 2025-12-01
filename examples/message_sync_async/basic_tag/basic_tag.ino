@@ -29,14 +29,14 @@ const char* TAG_ADDRESS = "T1T1T1T1";
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-// RYUW122 ryuw122(&Serial1);
+// RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 #define RX_PIN 5  // Connect to RYUW122 TX
 #define TX_PIN 4  // Connect to RYUW122 RX
 #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 
-RYUW122 ryuw122(RX_PIN, TX_PIN, &Serial1, RESET_PIN);
+RYUW122 uwb( TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 /**
@@ -52,7 +52,7 @@ void onTagDataReceived(int payloadLength, const char* data, int rssi) {
     // Prepare and send a response back to the Anchor
     const char* response = "PONG";
     Serial.print(F("Sending response: '")); Serial.print(response); Serial.println(F("'"));
-    ryuw122.tagSendData(strlen(response), response);
+    uwb.tagSendData(strlen(response), response);
     Serial.println(F("---------------------------------"));
 }
 
@@ -61,18 +61,18 @@ void setup() {
     while (!Serial) { delay(100); }
     Serial.println(F("RYUW122 Unified Tag Example"));
 
-    if (!ryuw122.begin()) {
+    if (!uwb.begin()) {
         Serial.println(F("Failed to initialize RYUW122 module. Halting."));
         while (1);
     }
 
     // Configure module settings
-    ryuw122.setMode(RYUW122Mode::TAG);
-    ryuw122.setNetworkId(NETWORK_ID);
-    ryuw122.setAddress(TAG_ADDRESS);
+    uwb.setMode(RYUW122Mode::TAG);
+    uwb.setNetworkId(NETWORK_ID);
+    uwb.setAddress(TAG_ADDRESS);
 
     // Register the callback for incoming data
-    ryuw122.onTagReceive(onTagDataReceived);
+    uwb.onTagReceive(onTagDataReceived);
 
     Serial.println(F("Tag configured and listening for messages."));
 }
@@ -81,7 +81,7 @@ void loop() {
     // The library's loop() function processes incoming serial data.
     // When a message from an Anchor arrives, it will trigger the
     // `onTagDataReceived` callback automatically.
-    ryuw122.loop();
+    uwb.loop();
 
     // A small delay is good practice to prevent the loop from spinning
     // too fast, which can be inefficient on some microcontrollers.

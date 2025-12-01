@@ -31,7 +31,7 @@ const char* TAG_ADDRESS = "T1T1T1T1";
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-// RYUW122 ryuw122(&Serial1);
+// RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
@@ -43,7 +43,7 @@ const char* TAG_ADDRESS = "T1T1T1T1";
 #define TX_PIN 4  // Connect to RYUW122 RX
 #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 
-RYUW122 ryuw122(RX_PIN, TX_PIN, &Serial1, RESET_PIN);
+RYUW122 uwb( TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 void setup() {
@@ -51,15 +51,15 @@ void setup() {
     while (!Serial) { delay(100); }
     Serial.println(F("RYUW122 Simple Distance Tag Example"));
 
-    if (!ryuw122.begin()) {
+    if (!uwb.begin()) {
         Serial.println(F("Failed to initialize RYUW122 module. Halting."));
         while (1);
     }
 
     // Configure module settings
-    ryuw122.setMode(RYUW122Mode::TAG);
-    ryuw122.setNetworkId(NETWORK_ID);
-    ryuw122.setAddress(TAG_ADDRESS);
+    uwb.setMode(RYUW122Mode::TAG);
+    uwb.setNetworkId(NETWORK_ID);
+    uwb.setAddress(TAG_ADDRESS);
 
     Serial.print(F("Tag configured with address "));
     Serial.println(TAG_ADDRESS);
@@ -69,6 +69,6 @@ void setup() {
 void loop() {
     // The library's loop() function automatically handles responding to
     // distance requests from an Anchor. We just need to call it repeatedly.
-    ryuw122.loop();
+    uwb.loop();
     delay(10);
 }

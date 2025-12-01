@@ -32,7 +32,7 @@ const char* TAG_ADDRESS = "T3T3T3T3"; // unique for this tag
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-// RYUW122 ryuw122(&Serial1);
+// RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
@@ -44,7 +44,7 @@ const char* TAG_ADDRESS = "T3T3T3T3"; // unique for this tag
 // #define TX_PIN 4  // Connect to RYUW122 RX
 // #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 //
-RYUW122 ryuw122(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
+RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 void onTagDataReceived(int payloadLength, const char* data, int rssi) {
@@ -55,7 +55,7 @@ void onTagDataReceived(int payloadLength, const char* data, int rssi) {
     // Respond with distance reading placeholder (module will fill real distance in reply path)
     const char* response = "PONG";
     Serial.print(F("Sending response: '")); Serial.print(response); Serial.println(F("'"));
-    ryuw122.tagSendData(strlen(response), response);
+    uwb.tagSendData(strlen(response), response);
     Serial.println(F("---------------------------------"));
 }
 
@@ -65,23 +65,23 @@ void setup() {
     delay(1000);
     Serial.println(F("RYUW122 TAG (esp32devkitv4)"));
 
-    if (!ryuw122.begin()) {
+    if (!uwb.begin()) {
         Serial.println(F("Failed to initialize RYUW122 module. Halting."));
         while (1);
     }
 
     // Configure module settings
-    ryuw122.setMode(RYUW122Mode::TAG);
-    ryuw122.setNetworkId(NETWORK_ID);
-    ryuw122.setAddress(TAG_ADDRESS);
+    uwb.setMode(RYUW122Mode::TAG);
+    uwb.setNetworkId(NETWORK_ID);
+    uwb.setAddress(TAG_ADDRESS);
 
     // Register the callback for incoming data
-    ryuw122.onTagReceive(onTagDataReceived);
+    uwb.onTagReceive(onTagDataReceived);
 
     Serial.println(F("Tag configured and listening for messages."));
 }
 
 void loop() {
-    ryuw122.loop();
+    uwb.loop();
     delay(10);
 }

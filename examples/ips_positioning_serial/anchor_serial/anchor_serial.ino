@@ -38,7 +38,7 @@ Point anchorPositions[3] = { {0.0, 0.0}, {5.3, 0.0}, {5.3, 3.65} };
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-RYUW122 ryuw122(&Serial1);
+RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
@@ -50,7 +50,7 @@ RYUW122 ryuw122(&Serial1);
 // #define TX_PIN 4  // Connect to RYUW122 RX
 // #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 // //
-// RYUW122 ryuw122(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
+// RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 // Received distances and flags (meters)
@@ -204,7 +204,7 @@ void setup() {
 
   // Initialize RYUW122 module
   Serial.println(F("Init UWB module..."));
-  if (!ryuw122.begin()) {
+  if (!uwb.begin()) {
     Serial.println(F("Failed to initialize RYUW122 module"));
     Serial.println(F("UWB Init FAILED! Check wiring"));
     for(;;);
@@ -214,21 +214,21 @@ void setup() {
 
   // Configure as ANCHOR (master)
   Serial.println(F("Configuring..."));
-  if (!ryuw122.setMode(RYUW122Mode::ANCHOR)) {
+  if (!uwb.setMode(RYUW122Mode::ANCHOR)) {
     Serial.println(F("Failed to set ANCHOR mode"));
   }
   Serial.println(F("Mode: ANCHOR (MASTER)"));
 
   // Set Network ID
-  ryuw122.setNetworkId(NETWORK_ID);
+  uwb.setNetworkId(NETWORK_ID);
   Serial.print(F("Network ID: ")); Serial.println(NETWORK_ID);
 
   // Set this device address (MASTER)
-  ryuw122.setAddress(MASTER_ADDRESS);
+  uwb.setAddress(MASTER_ADDRESS);
   Serial.print(F("Master Address: ")); Serial.println(MASTER_ADDRESS);
 
   // Register callback that receives +ANCHOR_RCV
-  ryuw122.onAnchorReceive(onAnchorDataReceived);
+  uwb.onAnchorReceive(onAnchorDataReceived);
   Serial.println(F("Callback registered"));
 
   Serial.println(F("READY"));
@@ -244,13 +244,13 @@ void loop() {
     const char* payload = "POLL";
     const char* target = targetTagAddresses[pollIndex];
     Serial.print(F("\n[MASTER] Polling Tag/Node: ")); Serial.println(target);
-    ryuw122.anchorSendData(target, strlen(payload), payload);
+    uwb.anchorSendData(target, strlen(payload), payload);
     pollIndex = (pollIndex + 1) % 3;
     lastPollTime = millis();
   }
 
   // Process incoming data and trigger callbacks
-  ryuw122.loop();
+  uwb.loop();
 
   delay(10);
 }

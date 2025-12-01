@@ -39,7 +39,7 @@ const int numTags = sizeof(tagAddresses) / sizeof(tagAddresses[0]);
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-// RYUW122 ryuw122(&Serial1);
+// RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
@@ -51,7 +51,7 @@ const int numTags = sizeof(tagAddresses) / sizeof(tagAddresses[0]);
 #define TX_PIN 4  // Connect to RYUW122 RX
 #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 
-RYUW122 ryuw122(RX_PIN, TX_PIN, &Serial1, RESET_PIN);
+RYUW122 uwb( TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 // --- State Variables (for Async method) ---
@@ -76,17 +76,17 @@ void setup() {
     while (!Serial) { delay(100); }
     Serial.println(F("RYUW122 Unified Distance Anchor Example"));
 
-    if (!ryuw122.begin()) {
+    if (!uwb.begin()) {
         Serial.println(F("Failed to initialize RYUW122 module. Halting."));
         while (1);
     }
 
-    ryuw122.setMode(RYUW122Mode::ANCHOR);
-    ryuw122.setNetworkId(NETWORK_ID);
-    ryuw122.setAddress(ANCHOR_ADDRESS);
+    uwb.setMode(RYUW122Mode::ANCHOR);
+    uwb.setNetworkId(NETWORK_ID);
+    uwb.setAddress(ANCHOR_ADDRESS);
 
     // Register the callback function for the async method.
-    ryuw122.onAnchorReceive(onDistanceResponse);
+    uwb.onAnchorReceive(onDistanceResponse);
 
     Serial.println(F("Anchor configured. Starting main loop."));
 }
@@ -109,7 +109,7 @@ void loop() {
         Serial.println(currentTag);
 
         // Send a non-blocking request with an empty payload to get a distance reading.
-        ryuw122.anchorSendData(currentTag, 0, "");
+        uwb.anchorSendData(currentTag, 0, "");
 
         // Move to the next tag for the next interval
         currentTagIndex = (currentTagIndex + 1) % numTags;
@@ -117,9 +117,9 @@ void loop() {
             Serial.println(F("--- Cycle complete ---"));
         }
     }
-    // The ryuw122.loop() function is crucial. It processes incoming serial data
+    // The uwb.loop() function is crucial. It processes incoming serial data
     // and triggers the onDistanceResponse callback when a reply arrives.
-    ryuw122.loop();
+    uwb.loop();
     delay(10); // Small delay to keep the loop from running too fast
 
 
@@ -132,7 +132,7 @@ void loop() {
         Serial.print(F("... "));
 
         // This function BLOCKS until a response is received or a timeout occurs.
-        float distance = ryuw122.getDistanceFrom(tagAddresses[i]);
+        float distance = uwb.getDistanceFrom(tagAddresses[i]);
 
         if (distance >= 0) {
             Serial.print(F("Success! Distance: "));

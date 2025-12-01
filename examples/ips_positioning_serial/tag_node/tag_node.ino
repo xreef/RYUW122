@@ -34,7 +34,7 @@ const char* TAG_ADDRESS = "T1T1T1T1"; // unique tag address
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-RYUW122 ryuw122(&Serial1);
+RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
@@ -46,7 +46,7 @@ RYUW122 ryuw122(&Serial1);
 // #define TX_PIN 4  // Connect to RYUW122 RX
 // #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 // //
-// RYUW122 ryuw122(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
+// RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 void onTagDataReceived(int payloadLength, const char* data, int rssi) {
@@ -55,7 +55,7 @@ void onTagDataReceived(int payloadLength, const char* data, int rssi) {
     Serial.print(F("RSSI: ")); Serial.print(rssi); Serial.println(F(" dBm"));
 
     const char* response = "PONG";
-    ryuw122.tagSendData(strlen(response), response);
+    uwb.tagSendData(strlen(response), response);
 }
 
 void setup() {
@@ -65,20 +65,20 @@ void setup() {
 
     Serial.println(F("RYUW122 TAG (esp32c3)"));
 
-    if (!ryuw122.begin()) {
+    if (!uwb.begin()) {
         Serial.println(F("Failed to initialize RYUW122 module. Halting."));
         while (1);
     }
 
-    ryuw122.setMode(RYUW122Mode::TAG);
-    ryuw122.setNetworkId(NETWORK_ID);
-    ryuw122.setAddress(TAG_ADDRESS);
-    ryuw122.onTagReceive(onTagDataReceived);
+    uwb.setMode(RYUW122Mode::TAG);
+    uwb.setNetworkId(NETWORK_ID);
+    uwb.setAddress(TAG_ADDRESS);
+    uwb.onTagReceive(onTagDataReceived);
 
     Serial.println(F("Tag configured and listening for messages."));
 }
 
 void loop() {
-    ryuw122.loop();
+    uwb.loop();
     delay(10);
 }

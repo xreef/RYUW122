@@ -69,7 +69,7 @@ Point anchorPositions[3] = { {0.0, 0.0}, {5.3, 0.0}, {5.3, 3.65} };
 
 // Initialize RYUW122 library with Serial2
 // Constructor: RYUW122(mcuTxPin, mcuRxPin, serial, lowResetTriggerInputPin)
-RYUW122 ryuw122(TX_PIN, RX_PIN, &Serial2, RESET_PIN);
+RYUW122 uwb(TX_PIN, RX_PIN, &Serial2, RESET_PIN);
 
 // Received distances and flags (meters)
 double anchorDistances[3] = { 0.0, 0.0, 0.0 };
@@ -284,7 +284,7 @@ void setup() {
 
   // Initialize RYUW122 module
   display.clearDisplay(); display.setCursor(0,0); display.println(F("Init UWB module...")); display.display();
-  if (!ryuw122.begin()) {
+  if (!uwb.begin()) {
     Serial.println(F("Failed to initialize RYUW122 module"));
     display.clearDisplay(); display.setCursor(0,0);
     display.println(F("UWB Init FAILED!")); display.println(F("Check wiring")); display.display();
@@ -295,21 +295,21 @@ void setup() {
 
   // Configure as ANCHOR (master)
   display.clearDisplay(); display.setCursor(0,0); display.println(F("Configuring...")); display.display();
-  if (!ryuw122.setMode(RYUW122Mode::ANCHOR)) {
+  if (!uwb.setMode(RYUW122Mode::ANCHOR)) {
     Serial.println(F("Failed to set ANCHOR mode"));
   }
   Serial.println(F("Mode: ANCHOR (MASTER)"));
 
   // Set Network ID
-  ryuw122.setNetworkId(NETWORK_ID);
+  uwb.setNetworkId(NETWORK_ID);
   Serial.print(F("Network ID: ")); Serial.println(NETWORK_ID);
 
   // Set this device address (MASTER)
-  ryuw122.setAddress(MASTER_ADDRESS);
+  uwb.setAddress(MASTER_ADDRESS);
   Serial.print(F("Master Address: ")); Serial.println(MASTER_ADDRESS);
 
   // Register callback that receives +ANCHOR_RCV
-  ryuw122.onAnchorReceive(onAnchorDataReceived);
+  uwb.onAnchorReceive(onAnchorDataReceived);
   Serial.println(F("Callback registered"));
 
   // Final display
@@ -330,13 +330,13 @@ void loop() {
     const char* payload = "POLL";
     const char* target = targetTagAddresses[pollIndex];
     Serial.print(F("\n[MASTER] Polling Tag/Node: ")); Serial.println(target);
-    ryuw122.anchorSendData(target, strlen(payload), payload);
+    uwb.anchorSendData(target, strlen(payload), payload);
     pollIndex = (pollIndex + 1) % 3;
     lastPollTime = millis();
   }
 
   // Process incoming data and trigger callbacks
-  ryuw122.loop();
+  uwb.loop();
 
   delay(10);
 }
