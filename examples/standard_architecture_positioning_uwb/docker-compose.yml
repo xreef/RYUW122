@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq_uwb
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI port
+      - "1883:1883"   # MQTT port
+    environment:
+      - RABBITMQ_DEFAULT_USER=your_mqtt_user
+      - RABBITMQ_DEFAULT_PASS=your_mqtt_password
+      - RABBITMQ_DEFAULT_VHOST=/
+    volumes:
+      - ./rabbitmq_data:/var/lib/rabbitmq/
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+    networks:
+      - uwb_network
+
+networks:
+  uwb_network:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:

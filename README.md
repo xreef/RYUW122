@@ -289,7 +289,11 @@ String sendCommand(const char* command, unsigned long timeout = 1000);
 
 ## 📝 Changelog
 
- - v1.0.1 2025-12-01: Fix examples and update documentation 
+ - v1.0.1 2025-12-01: 
+   - Fix examples and update documentation
+   - Added new example `standard_architecture_positioning_uwb` demonstrating a full Master/Slave trilateration system with MQTT.
+   - Added `docker-compose.yml` for easy setup of a RabbitMQ broker with MQTT support.
+   - Updated schemas with authorship, license, and logo.
  - v1.0.0 2025-10-10):
    - Initial release
    - Support for Tag and Anchor modes
