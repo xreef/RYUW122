@@ -64,6 +64,9 @@ void setup() {
     uwb.setMode(RYUW122Mode::TAG);
     uwb.setNetworkId(NETWORK_ID);
     uwb.setAddress(TAG_ADDRESS);
+    // Enable RSSI display on the TAG as well, although distance is calculated at Anchor
+    // This ensures consistency if we ever look at logs here
+    uwb.setRssiDisplay(RYUW122RSSI::ENABLE);
 
     Serial.print(F("Tag configured with address "));
     Serial.println(TAG_ADDRESS);

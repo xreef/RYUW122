@@ -88,6 +88,9 @@ void setup() {
     uwb.setMode(RYUW122Mode::ANCHOR);
     uwb.setNetworkId(NETWORK_ID);
     uwb.setAddress(ANCHOR_ADDRESS);
+    // Enable RSSI display on the TAG as well, although distance is calculated at Anchor
+    // This ensures consistency if we ever look at logs here
+    uwb.setRssiDisplay(RYUW122RSSI::ENABLE);
 
     // Register the callback function for the async method.
     uwb.onAnchorReceive(onDistanceResponse);
