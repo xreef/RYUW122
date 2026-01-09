@@ -24,10 +24,10 @@ const char* MASTER_ADDRESS = "MOB00001";   // Mobile/master address (this device
 // Default values are placeholders - change to match your setup (8-char addresses)
 const char* targetTagAddresses[3] = { "T1T1T1T1", "T2T2T2T2", "T3T3T3T3" };
 
-// Anchor coordinates (meters) - change to match your installation
+// Tag coordinates (meters) - change to match your installation
 struct Point { double x; double y; };
-// Changed mapping per richiesta: (0,0)=top-left, (6,0)=top-right, third anchor at bottom-right (6,4.5)
-Point anchorPositions[3] = { {0.0, 0.0}, {5.3, 0.0}, {5.3, 3.65} };
+// Changed mapping per richiesta: (0,0)=top-left, (6,0)=top-right, third tag at bottom-right (6,4.5)
+Point tagPositions[3] = { {0.0, 0.0}, {5.3, 0.0}, {5.3, 3.65} };
 
 // ------------------ ARDUINO UNO SOFTWARE SERIAL ------------------
 // Define pins for SoftwareSerial (adjust based on your board)
@@ -54,7 +54,7 @@ RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 // Received distances and flags (meters)
-double anchorDistances[3] = { 0.0, 0.0, 0.0 };
+double tagDistances[3] = { 0.0, 0.0, 0.0 };
 bool anchorHave[3] = { false, false, false };
 unsigned long anchorTimestamps[3] = {0,0,0};
 
@@ -85,9 +85,9 @@ void printStatusToSerial() {
   Serial.print(F("This (master) addr: ")); Serial.println(MASTER_ADDRESS);
   Serial.print(F("Packets received: ")); Serial.println(packetsReceived);
   for (int i=0;i<3;i++) {
-    Serial.print(F("Anchor ")); Serial.print(i); Serial.print(F(" (")); Serial.print(targetTagAddresses[i]); Serial.print(F("): "));
+    Serial.print(F("Tag ")); Serial.print(i); Serial.print(F(" (")); Serial.print(targetTagAddresses[i]); Serial.print(F("): "));
     if (anchorHave[i]) {
-      Serial.print(anchorDistances[i],3); Serial.print(F(" m"));
+      Serial.print(tagDistances[i],3); Serial.print(F(" m"));
       unsigned long age = millis() - anchorTimestamps[i];
       Serial.print(F(" (age ")); Serial.print(age); Serial.println(F(" ms)"));
     } else {
@@ -109,9 +109,9 @@ void printStatusToSerial() {
 // Simple ASCII map: small fixed grid scaled to anchors extents
 void printAsciiMap() {
   const int W = 40; const int H = 12; // ASCII grid
-  double minx = anchorPositions[0].x, maxx = anchorPositions[0].x;
-  double miny = anchorPositions[0].y, maxy = anchorPositions[0].y;
-  for (int i=1;i<3;i++) { if (anchorPositions[i].x < minx) minx = anchorPositions[i].x; if (anchorPositions[i].x > maxx) maxx = anchorPositions[i].x; if (anchorPositions[i].y < miny) miny = anchorPositions[i].y; if (anchorPositions[i].y > maxy) maxy = anchorPositions[i].y; }
+  double minx = tagPositions[0].x, maxx = tagPositions[0].x;
+  double miny = tagPositions[0].y, maxy = tagPositions[0].y;
+  for (int i=1;i<3;i++) { if (tagPositions[i].x < minx) minx = tagPositions[i].x; if (tagPositions[i].x > maxx) maxx = tagPositions[i].x; if (tagPositions[i].y < miny) miny = tagPositions[i].y; if (tagPositions[i].y > maxy) maxy = tagPositions[i].y; }
   if (havePosition) { if (estimatedX < minx) minx = estimatedX; if (estimatedX > maxx) maxx = estimatedX; if (estimatedY < miny) miny = estimatedY; if (estimatedY > maxy) maxy = estimatedY; }
   double padx = max(0.5, (maxx - minx) * 0.2);
   double pady = max(0.5, (maxy - miny) * 0.2);
@@ -125,8 +125,8 @@ void printAsciiMap() {
 
   // place anchors '1','2','3'
   for (int i=0;i<3;i++) {
-    int gx = (int)((anchorPositions[i].x - minx) * sx + 0.5);
-    int gy = (int)((anchorPositions[i].y - miny) * sy + 0.5);
+    int gx = (int)((tagPositions[i].x - minx) * sx + 0.5);
+    int gy = (int)((tagPositions[i].y - miny) * sy + 0.5);
     if (gx<0) gx=0; if (gx>=W) gx=W-1; if (gy<0) gy=0; if (gy>=H) gy=H-1;
     char label = '1' + i; grid[gy][gx] = label;
   }
@@ -164,7 +164,7 @@ void onAnchorDataReceived(const char* tagAddress, int payloadLength, const char*
 
   // Simplified: convert cm to meters and store directly
   double dist_m = (double)distanceCm / 100.0; // cm -> meters
-  anchorDistances[idx] = dist_m;
+  tagDistances[idx] = dist_m;
   anchorHave[idx] = true;
   anchorTimestamps[idx] = millis();
   packetsReceived++;
@@ -198,7 +198,7 @@ void setup() {
 
   // Initialize arrays and default buffers
   for (int i=0;i<3;i++) {
-    anchorHave[i]=false; anchorDistances[i]=0.0; anchorTimestamps[i]=0;
+    anchorHave[i]=false; tagDistances[i]=0.0; anchorTimestamps[i]=0;
   }
   havePosition = false;
 
@@ -239,7 +239,7 @@ void setup() {
 }
 
 void loop() {
-  // Poll next anchor periodically
+  // Poll next tag periodically
   if (millis() - lastPollTime >= SEND_INTERVAL) {
     const char* payload = "POLL";
     const char* target = targetTagAddresses[pollIndex];
@@ -257,9 +257,9 @@ void loop() {
 
 // Simple 2D trilateration using three circle intersections (linearized form)
 bool tryTrilateration() {
-  double x1 = anchorPositions[0].x; double y1 = anchorPositions[0].y; double r1 = anchorDistances[0];
-  double x2 = anchorPositions[1].x; double y2 = anchorPositions[1].y; double r2 = anchorDistances[1];
-  double x3 = anchorPositions[2].x; double y3 = anchorPositions[2].y; double r3 = anchorDistances[2];
+  double x1 = tagPositions[0].x; double y1 = tagPositions[0].y; double r1 = tagDistances[0];
+  double x2 = tagPositions[1].x; double y2 = tagPositions[1].y; double r2 = tagDistances[1];
+  double x3 = tagPositions[2].x; double y3 = tagPositions[2].y; double r3 = tagDistances[2];
 
   if (r1 <= 0 || r2 <= 0 || r3 <= 0) return false;
 
