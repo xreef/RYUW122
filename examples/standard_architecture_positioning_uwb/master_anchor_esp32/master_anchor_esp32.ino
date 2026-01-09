@@ -186,7 +186,7 @@ void loop() {
     if (millis() - lastPollRequestTime >= POLLING_INTERVAL_MS) {
         lastPollRequestTime = millis();
 
-        StaticJsonDocument<128> doc;
+        JsonDocument doc;
         doc["poll_id"] = lastPollRequestTime;
         doc["tag_address"] = TARGET_TAG;
 
