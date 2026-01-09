@@ -34,19 +34,19 @@ const char* TAG_ADDRESS = "T1T1T1T1"; // unique tag address
 // RYUW122 uwb(TX_PIN, RX_PIN, RYUW122BaudRate::B_9600);
 // -----------------------------------------------------------------
 // -------------------------- ARDUINO MEGA -------------------------
-RYUW122 uwb(&Serial1);
+// RYUW122 uwb(&Serial1);
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
-// #define RX_PIN 9  // Connect to RYUW122 TX
-// #define TX_PIN 10  // Connect to RYUW122 RX
-// #define RESET_PIN 13 // Connect to RYUW122 NRST (active LOW)
+#define RX_PIN 9  // Connect to RYUW122 TX
+#define TX_PIN 10  // Connect to RYUW122 RX
+#define RESET_PIN 13 // Connect to RYUW122 NRST (active LOW)
 //
 // #define RX_PIN 5  // Connect to RYUW122 TX
 // #define TX_PIN 4  // Connect to RYUW122 RX
 // #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
 // //
-// RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
+RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 void onTagDataReceived(int payloadLength, const char* data, int rssi) {

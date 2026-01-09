@@ -35,15 +35,19 @@ const char* TAG_ADDRESS = "T1T1T1T1";
 // -----------------------------------------------------------------
 // ------------------------ ESP32 ----------------------------------
 // --- Configuration ---
-// #define RX_PIN 16
-// #define TX_PIN 17
-// #define RESET_PIN 4
-
+// #define RX_PIN 18  // Connect to RYUW122 TX
+// #define TX_PIN 17  // Connect to RYUW122 RX
+// #define RESET_PIN 13 // Connect to RYUW122 NRST (active LOW)
+//
+// #define RX_PIN 9  // Connect to RYUW122 TX
+// #define TX_PIN 10  // Connect to RYUW122 RX
+// #define RESET_PIN 13 // Connect to RYUW122 NRST (active LOW)
+//
 #define RX_PIN 5  // Connect to RYUW122 TX
 #define TX_PIN 4  // Connect to RYUW122 RX
 #define RESET_PIN 6 // Connect to RYUW122 NRST (active LOW)
-
-RYUW122 uwb( TX_PIN, RX_PIN, &Serial1, RESET_PIN);
+// //
+RYUW122 uwb(TX_PIN, RX_PIN, &Serial1, RESET_PIN);
 // -----------------------------------------------------------------
 
 void setup() {
