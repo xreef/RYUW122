@@ -1,0 +1,5 @@
+customtkinter
+matplotlib
+numpy
+paho-mqtt
+pillow
