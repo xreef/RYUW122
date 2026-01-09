@@ -17,6 +17,21 @@ static int safeAtoi(const char* s, int defVal = 0) {
     return (int)val;
 }
 
+// Helper: split string by comma, handling empty fields.
+// Similar to strsep but portable and specific to comma.
+static char* strSepComma(char** stringp) {
+    char* start = *stringp;
+    if (!start) return nullptr;
+    char* end = strchr(start, ',');
+    if (end) {
+        *end = '\0';
+        *stringp = end + 1;
+    } else {
+        *stringp = nullptr;
+    }
+    return start;
+}
+
 // Helper: read a line from stream into a char buffer, handling timeout and buffer size.
 // Returns true if a line was read, false on timeout or error.
 static bool readLine(Stream& stream, char* buffer, size_t bufferSize, unsigned long timeout) {
@@ -643,11 +658,23 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
             } else if (strncmp_P(response, PSTR("+ANCHOR_RCV="), 12) == 0) {
                 // Parse the response: +ANCHOR_RCV=<TAG Address>,<PAYLOAD LENGTH>,<TAG DATA>,<DISTANCE>,<RSSI>
                 char* ptr = response + 12;
-                char* recvTagAddr = strtok(ptr, ",");
-                strtok(nullptr, ","); // Skip payload length
-                char* recvData = strtok(nullptr, ",");
-                char* recvDistanceStr = strtok(nullptr, ",");
-                char* recvRssiStr = strtok(nullptr, ",\r\n");
+                char* recvTagAddr = strSepComma(&ptr);
+                strSepComma(&ptr); // Skip payload length
+                char* recvData = strSepComma(&ptr);
+                char* recvDistanceStr = strSepComma(&ptr);
+                char* recvRssiStr = strSepComma(&ptr);
+
+                // Clean RSSI string (remove \r or \n if present)
+                if (recvRssiStr) {
+                    char* p = recvRssiStr;
+                    while (*p) {
+                        if (*p == '\r' || *p == '\n') {
+                            *p = '\0';
+                            break;
+                        }
+                        p++;
+                    }
+                }
 
                 // Verify it's from the correct TAG
                 if (recvTagAddr && strcmp(recvTagAddr, tagAddress) == 0) {
@@ -951,11 +978,11 @@ void RYUW122::parseAnchorReceive(char* response) {
     // Parse the response once
     /* use compile-time length to avoid runtime strlen on literal */
     char* ptr = response + (sizeof("+ANCHOR_RCV=") - 1);
-    char* tagAddress = strtok(ptr, ",");
-    char* payloadStr = strtok(nullptr, ",");
-    char* tagData = strtok(nullptr, ",");
-    char* distanceStr = strtok(nullptr, ",");
-    char* rssiStr = strtok(nullptr, ",\r\n");
+    char* tagAddress = strSepComma(&ptr);
+    char* payloadStr = strSepComma(&ptr);
+    char* tagData = strSepComma(&ptr);
+    char* distanceStr = strSepComma(&ptr);
+    char* rssiStr = strSepComma(&ptr);
     int payloadLength = payloadStr ? safeAtoi(payloadStr, 0) : 0;
     int distance = distanceStr ? safeAtoi(distanceStr, 0) : 0;
     int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
@@ -982,9 +1009,9 @@ void RYUW122::parseTagReceive(char* response) {
         // +TAG_RCV=<payloadLength>,<data>,<rssi>
         /* use compile-time length to avoid runtime strlen on literal */
         char* ptr = response + (sizeof("+TAG_RCV=") - 1);
-        char* payloadStr = strtok(ptr, ",");
-        char* data = strtok(nullptr, ",");
-        char* rssiStr = strtok(nullptr, ",\r\n");
+        char* payloadStr = strSepComma(&ptr);
+        char* data = strSepComma(&ptr);
+        char* rssiStr = strSepComma(&ptr);
         int payloadLength = payloadStr ? safeAtoi(payloadStr, 0) : 0;
         int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
         _tagReceiveCallback(payloadLength, data ? data : "", rssi);
@@ -994,9 +1021,9 @@ void RYUW122::parseTagReceive(char* response) {
     if (_simpleMessageCallback) {
         /* use compile-time length to avoid runtime strlen on literal */
         char* ptr = response + (sizeof("+TAG_RCV=") - 1);
-        strtok(ptr, ","); // Skip payload length
-        char* data = strtok(nullptr, ",");
-        char* rssiStr = strtok(nullptr, ",\r\n");
+        strSepComma(&ptr); // Skip payload length
+        char* data = strSepComma(&ptr);
+        char* rssiStr = strSepComma(&ptr);
         int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
         _simpleMessageCallback("ANCHOR", data ? data : "", rssi);
     }
