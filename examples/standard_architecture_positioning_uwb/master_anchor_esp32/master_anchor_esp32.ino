@@ -1,5 +1,5 @@
 /**
- * @file 01_Master_Anchor_esp32devkitv4.ino
+ * @file master_anchor_esp32.ino
  * @author Renzo Mischianti
  * @brief UWB Master Anchor for ESP32, initiating polling via MQTT.
  * @version 1.0.0

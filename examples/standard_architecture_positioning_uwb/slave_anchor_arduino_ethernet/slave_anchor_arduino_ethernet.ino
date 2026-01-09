@@ -1,5 +1,5 @@
 /**
- * @file 02_Slave_Anchor_arduinoMega.ino
+ * @file slave_anchor_arduino_ethernet.ino
  * @author Renzo Mischianti
  * @brief UWB Slave Anchor for Arduino Mega with Ethernet.
  * @version 1.0.0

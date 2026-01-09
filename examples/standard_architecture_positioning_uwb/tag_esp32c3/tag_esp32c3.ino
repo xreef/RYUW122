@@ -1,5 +1,5 @@
 /**
- * @file 04_Tag_esp32c3.ino
+ * @file tag_esp32c3.ino
  * @author Renzo Mischianti
  * @brief UWB Tag for ESP32-C3, designed for a trilateration system.
  * @version 1.0.0

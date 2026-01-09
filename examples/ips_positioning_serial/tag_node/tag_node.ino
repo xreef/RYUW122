@@ -3,13 +3,9 @@
  * @author Renzo Mischianti
  * @brief Unified example for basic positioning TAG communication. IPS (Indoor Positioning System)
  * @version 1.0.0
- * @date 2025-10-10
+ * @date 2024-05-23
  *
- * This sketch contains two methods for communicating with a Tag.
- * METHOD 1 (Asynchronous) is recommended as it does not block the main loop.
- * METHOD 2 (Synchronous) is simpler but blocks the loop while waiting for a response.
- *
- * **Instructions:** Uncomment the method you want to use in the `loop()` function and comment out the other.
+ * More info and reference projects at https://mischianti.org/category/my-libraries/ryuw122-uwb/
  *
  * @copyright Copyright (c) 2024
  *
@@ -54,6 +50,9 @@ void onTagDataReceived(int payloadLength, const char* data, int rssi) {
     Serial.print(F("Data: ")); Serial.println(data);
     Serial.print(F("RSSI: ")); Serial.print(rssi); Serial.println(F(" dBm"));
 
+    // The following line is NOT required for positioning.
+    // It is included only to demonstrate how a tag *could* send data back if needed for a different application.
+    // For pure positioning, the module handles the response automatically.
     const char* response = "PONG";
     uwb.tagSendData(strlen(response), response);
 }
@@ -79,6 +78,11 @@ void setup() {
 }
 
 void loop() {
+    // uwb.loop() must be called continuously to allow the library to process
+    // incoming UWB messages, manage module state, and trigger callbacks.
     uwb.loop();
+
+    // A small delay can be added to prevent the loop from running too fast,
+    // which can be more power-efficient and is generally good practice.
     delay(10);
 }

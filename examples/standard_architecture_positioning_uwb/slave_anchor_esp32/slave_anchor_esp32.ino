@@ -1,7 +1,7 @@
 /**
  * @file 03_Slave_Anchor_heltecWiFiKitv2.ino
  * @author Renzo Mischianti
- * @brief UWB Slave Anchor for Heltec WiFi Kit V2.
+ * @brief UWB Slave Anchor for Heltec WiFi Kit V2, an ESP32.
  * @version 1.0.0
  * @date 2024-05-23
  *
