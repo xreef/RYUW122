@@ -685,8 +685,15 @@ bool RYUW122::anchorSendDataSync(const char* tagAddress, int payloadLength, cons
                     if (distance && recvDistanceStr) {
                         *distance = safeAtoi(recvDistanceStr, *distance);
                     }
-                    if (rssi && recvRssiStr) {
-                        *rssi = safeAtoi(recvRssiStr, *rssi);
+                    if (rssi) {
+                        if (recvRssiStr && *recvRssiStr != '\0') {
+                            int val = safeAtoi(recvRssiStr, 0);
+                            if (val < -100) val = -100; // Clamp to -100
+                            *rssi = val;
+                        } else {
+                            // If RSSI string is empty or null, set to 0
+                            *rssi = 0;
+                        }
                     }
                     receivedData = true;
                     break;
@@ -985,7 +992,16 @@ void RYUW122::parseAnchorReceive(char* response) {
     char* rssiStr = strSepComma(&ptr);
     int payloadLength = payloadStr ? safeAtoi(payloadStr, 0) : 0;
     int distance = distanceStr ? safeAtoi(distanceStr, 0) : 0;
-    int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
+    int rssi = 0;
+
+    if (rssiStr && *rssiStr != '\0') {
+        int val = safeAtoi(rssiStr, 0);
+        if (val < -100) val = -100; // Clamp to -100
+        rssi = val;
+    } else {
+        // If RSSI is missing or empty, default to 0
+        rssi = 0;
+    }
 
     // Trigger original callback if registered
     if (_anchorReceiveCallback) {
@@ -1013,7 +1029,16 @@ void RYUW122::parseTagReceive(char* response) {
         char* data = strSepComma(&ptr);
         char* rssiStr = strSepComma(&ptr);
         int payloadLength = payloadStr ? safeAtoi(payloadStr, 0) : 0;
-        int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
+        int rssi = 0;
+
+        if (rssiStr && *rssiStr != '\0') {
+            int val = safeAtoi(rssiStr, 0);
+            if (val < -100) val = -100; // Clamp to -100
+            rssi = val;
+        } else {
+            rssi = 0;
+        }
+
         _tagReceiveCallback(payloadLength, data ? data : "", rssi);
     }
 
@@ -1024,7 +1049,16 @@ void RYUW122::parseTagReceive(char* response) {
         strSepComma(&ptr); // Skip payload length
         char* data = strSepComma(&ptr);
         char* rssiStr = strSepComma(&ptr);
-        int rssi = rssiStr ? safeAtoi(rssiStr, 0) : 0;
+        int rssi = 0;
+
+        if (rssiStr && *rssiStr != '\0') {
+            int val = safeAtoi(rssiStr, 0);
+            if (val < -100) val = -100; // Clamp to -100
+            rssi = val;
+        } else {
+            rssi = 0;
+        }
+
         _simpleMessageCallback("ANCHOR", data ? data : "", rssi);
     }
 }
